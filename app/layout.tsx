@@ -3,7 +3,7 @@ import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://zuoye-shiguang-didi.humble-drum-3799.chatgpt.site'),
+  metadataBase: new URL('https://zuoye-shiguang-didi.arsene56.chatgpt.site'),
   title: '作业时光｜自己规划，快乐成长',
   description: '帮助小学生和家长识别、规划并自主完成家庭作业的双端体验原型。',
   applicationName: '作业时光',
