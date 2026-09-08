@@ -13,12 +13,19 @@ import { usePrototype } from '@/components/prototype-provider';
 import { getFocusMinutes, weekChart, type HomeworkTask } from '@/lib/prototype-data';
 
 type ChildTab = 'today' | 'growth' | 'rewards' | 'report';
+type RewardFilter = 'all' | 'didi' | 'family';
 
 const childNav: { key: ChildTab; label: string; icon: typeof Home }[] = [
   { key: 'today', label: '今日计划', icon: Home },
   { key: 'growth', label: '我的成长', icon: Trophy },
   { key: 'rewards', label: '星星商店', icon: ShoppingBag },
   { key: 'report', label: '本周回顾', icon: Award },
+];
+
+const rewardFilters: { key: RewardFilter; label: string }[] = [
+  { key: 'all', label: '全部奖励' },
+  { key: 'didi', label: '嘀嘀皮肤' },
+  { key: 'family', label: '家庭心愿' },
 ];
 
 function formatSeconds(seconds: number) {
@@ -38,6 +45,7 @@ export default function ChildPage() {
   const [overrunOpen, setOverrunOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [rewardOpen, setRewardOpen] = useState(false);
+  const [rewardFilter, setRewardFilter] = useState<RewardFilter>('all');
   const [celebration, setCelebration] = useState(false);
   const [evidence, setEvidence] = useState(false);
   const [rewardTitle, setRewardTitle] = useState('周末去公园骑车');
@@ -60,6 +68,10 @@ export default function ChildPage() {
   const totalFocusMinutes = useMemo(
     () => activeChild.tasks.filter((task) => task.kind === 'homework').reduce((sum, task) => sum + task.estimatedMinutes, 0),
     [activeChild.tasks],
+  );
+  const filteredRewards = useMemo(
+    () => rewards.filter((reward) => rewardFilter === 'all' || (rewardFilter === 'family' ? reward.custom : !reward.custom)),
+    [rewardFilter, rewards],
   );
 
   function showToast(message: string) {
@@ -85,6 +97,7 @@ export default function ChildPage() {
   function makeRewardRequest() {
     addRewardRequest(rewardTitle, rewardStars);
     setRewardOpen(false);
+    setRewardFilter('family');
     showToast('奖励申请已发给爸爸妈妈');
   }
 
@@ -203,9 +216,11 @@ export default function ChildPage() {
                 <section className="rewards-view">
                   <div className="tablet-page-title"><div><span>星星商店</span><h2>把坚持换成期待</h2></div><button className="new-reward-button" onClick={() => setRewardOpen(true)}><Plus />许一个新愿望</button></div>
                   <section className="star-wallet"><div><Star /><span><small>我的星星</small><strong>{activeChild.stars}</strong></span></div><p>完成任务、认真休息和自主规划都能获得星星。</p><span>本周已获得 36 颗</span></section>
-                  <div className="reward-tabs"><button className="active">全部奖励</button><button>嘀嘀皮肤</button><button>家庭心愿</button></div>
-                  <div className="reward-grid">
-                    {rewards.map((reward) => (
+                  <div className="reward-tabs" role="tablist" aria-label="奖励分类">
+                    {rewardFilters.map((filter) => <button key={filter.key} type="button" role="tab" aria-selected={rewardFilter === filter.key} className={rewardFilter === filter.key ? 'active' : ''} onClick={() => setRewardFilter(filter.key)}>{filter.label}</button>)}
+                  </div>
+                  <div className="reward-grid" role="tabpanel" aria-live="polite">
+                    {filteredRewards.map((reward) => (
                       <article className={`reward-card ${reward.status}`} key={reward.id}>
                         <span className="reward-illustration">{reward.icon}</span>
                         <div><small>{reward.custom ? '家庭自定义' : '嘀嘀限定'}</small><strong>{reward.title}</strong></div>
