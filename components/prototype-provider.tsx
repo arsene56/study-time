@@ -64,10 +64,14 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(storageKey);
+      // Persisted demo data is intentionally hydrated after mount so the
+      // server and first client render remain identical.
+      // oxlint-disable-next-line react/react-compiler
       if (saved) setState(JSON.parse(saved) as DemoState);
     } catch {
       // The prototype still works when storage is blocked.
     }
+    // oxlint-disable-next-line react/react-compiler
     setHydrated(true);
   }, []);
 

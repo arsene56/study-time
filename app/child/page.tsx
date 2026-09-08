@@ -288,7 +288,7 @@ export default function ChildPage() {
         <DialogContent className="reward-request-dialog">
           <DialogHeader><DialogTitle>许一个新的奖励愿望</DialogTitle><DialogDescription>你可以自己想奖励和星星门槛，爸爸妈妈确认后才会生效。</DialogDescription></DialogHeader>
           <label><span>我想要</span><input value={rewardTitle} onChange={(event) => setRewardTitle(event.target.value)} /></label>
-          <label><span>需要多少颗星星？</span><div className="star-stepper"><button onClick={() => setRewardStars(Math.max(10, rewardStars - 10))}>−</button><strong><Star />{rewardStars}</strong><button onClick={() => setRewardStars(rewardStars + 10)}>＋</button></div></label>
+          <fieldset className="reward-field"><legend>需要多少颗星星？</legend><div className="star-stepper"><button type="button" onClick={() => setRewardStars(Math.max(10, rewardStars - 10))}>−</button><strong><Star />{rewardStars}</strong><button type="button" onClick={() => setRewardStars(rewardStars + 10)}>＋</button></div></fieldset>
           <div className="approval-flow"><span>我提出愿望</span><i>→</i><span>家长确认</span><i>→</i><span>攒星兑换</span></div>
           <button className="send-reward-request" onClick={makeRewardRequest}><Gift />发给爸爸妈妈确认</button>
         </DialogContent>

@@ -73,7 +73,7 @@ function DialogContent({
   children,
   showCloseButton = true,
   ...props
-}: React.ComponentProps<'div'> & { showCloseButton?: boolean }) {
+}: React.ComponentProps<'dialog'> & { showCloseButton?: boolean }) {
   const { open, setOpen } = useDialogContext();
 
   React.useEffect(() => {
