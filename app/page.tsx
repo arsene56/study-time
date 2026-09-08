@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { ArrowRight, BellRing, Clock3, ScanLine, Sparkles, UsersRound } from 'lucide-react';
 
 const tasks = [
@@ -31,21 +30,21 @@ export default function Home() {
             </p>
 
             <div className="role-actions">
-              <Link className="onboarding-entry" href="/onboarding">
+              <a className="onboarding-entry" href="/onboarding">
                 <span><UsersRound /></span>
                 <span><strong>从首次使用开始体验</strong><small>建立家庭 · 添加孩子 · 扫码绑定设备</small></span>
                 <ArrowRight size={20} />
-              </Link>
-              <Link className="role-card role-card-primary" href="/parent">
+              </a>
+              <a className="role-card role-card-primary" href="/parent">
                 <span className="role-icon"><ScanLine /></span>
                 <span><strong>我是家长</strong><small>录作业 · 看进度 · 给鼓励</small></span>
                 <ArrowRight size={20} />
-              </Link>
-              <Link className="role-card" href="/child">
+              </a>
+              <a className="role-card" href="/child">
                 <span className="role-icon child-role"><Sparkles /></span>
                 <span><strong>我是孩子</strong><small>认领计划 · 专注打卡 · 收集星星</small></span>
                 <ArrowRight size={20} />
-              </Link>
+              </a>
             </div>
 
             <p className="demo-note"><BellRing size={14} /> 演示家庭：林家 · 两位孩子 · 数据互相隔离</p>

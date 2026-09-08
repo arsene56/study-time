@@ -1,7 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import {
   ArrowLeft, ArrowRight, Check, Clock3, Eye, Plus, QrCode, ShieldCheck,
@@ -12,7 +10,6 @@ import { usePrototype } from '@/components/prototype-provider';
 const steps = ['你的身份', '建立家庭', '添加孩子', '设置作息', '健康用眼', '绑定设备'];
 
 export default function OnboardingPage() {
-  const router = useRouter();
   const { setFamilyReady } = usePrototype();
   const [step, setStep] = useState(0);
   const [relation, setRelation] = useState('妈妈');
@@ -21,13 +18,13 @@ export default function OnboardingPage() {
 
   function finish() {
     setFamilyReady(true);
-    router.push('/parent');
+    window.location.assign('/parent');
   }
 
   return (
     <main className="onboarding-page">
       <div className="onboarding-topbar">
-        <Link href="/" className="onboarding-brand"><Clock3 /><span><strong>作业时光</strong><small>自己规划，快乐成长</small></span></Link>
+        <a href="/" className="onboarding-brand"><Clock3 /><span><strong>作业时光</strong><small>自己规划，快乐成长</small></span></a>
         <span className="secure-note"><ShieldCheck />演示数据仅保存在本机</span>
       </div>
 

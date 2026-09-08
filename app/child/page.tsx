@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Award, Camera, Check, ChevronDown, ChevronUp, Clock3, Eye, Gift,
@@ -92,7 +91,7 @@ export default function ChildPage() {
   return (
     <main className="prototype-stage child-stage">
       <aside className="prototype-rail child-rail">
-        <Link href="/" className="rail-brand"><Clock3 /><span>作业时光</span></Link>
+        <a href="/" className="rail-brand"><Clock3 /><span>作业时光</span></a>
         <div className="rail-copy">
           <span>孩子平板端</span>
           <h1>我的计划，<br />我来做主。</h1>
@@ -104,7 +103,7 @@ export default function ChildPage() {
           <button onClick={() => { setOverrunOpen(true); }}><TimerReset />体验超时重排</button>
           <button onClick={() => setCelebration(true)}><Sparkles />查看全部完成特效</button>
         </div>
-        <Link href="/parent" className="rail-switch">切换到家长微信端 <span>→</span></Link>
+        <a href="/parent" className="rail-switch">切换到家长微信端 <span>→</span></a>
       </aside>
 
       <section className="device-frame tablet-frame" aria-label="作业时光孩子平板端原型">

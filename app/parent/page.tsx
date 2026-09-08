@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import {
   Bell, Camera, Check, ChevronDown, ChevronUp, Clock3, Edit3, Gift,
@@ -64,7 +63,7 @@ export default function ParentPage() {
   return (
     <main className="prototype-stage parent-stage">
       <aside className="prototype-rail">
-        <Link href="/" className="rail-brand"><Clock3 /><span>作业时光</span></Link>
+        <a href="/" className="rail-brand"><Clock3 /><span>作业时光</span></a>
         <div className="rail-copy">
           <span>家长微信端</span>
           <h1>安心看见成长，<br />把安排交给孩子。</h1>
@@ -75,7 +74,7 @@ export default function ParentPage() {
           <strong>{activities.length} 条亲子协作记录</strong>
           <span>孩子的每次自主调整，家长都能看见。</span>
         </div>
-        <Link href="/child" className="rail-switch">切换到孩子平板端 <span>→</span></Link>
+        <a href="/child" className="rail-switch">切换到孩子平板端 <span>→</span></a>
       </aside>
 
       <section className="device-frame phone-frame" aria-label="作业时光家长端原型">
@@ -231,7 +230,7 @@ export default function ParentPage() {
                   <button><span>🎨</span><p><strong>嘀嘀主题与皮肤</strong><small>薄荷森林主题</small></p><b>›</b></button>
                   <button><span>🛡️</span><p><strong>隐私与照片管理</strong><small>演示照片仅保存在本机</small></p><b>›</b></button>
                 </section>
-                <div className="profile-actions"><Link href="/">返回体验入口</Link><button onClick={() => { resetDemo(); showToast('演示数据已重置'); }}>重置全部演示数据</button></div>
+                <div className="profile-actions"><a href="/">返回体验入口</a><button onClick={() => { resetDemo(); showToast('演示数据已重置'); }}>重置全部演示数据</button></div>
                 <p className="version-copy">作业时光 · 高保真体验版 0.1</p>
               </section>
             )}
