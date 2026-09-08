@@ -1,0 +1,12 @@
+{
+  "name": "作业时光",
+  "short_name": "作业时光",
+  "description": "自己规划，快乐成长",
+  "start_url": "/child",
+  "display": "standalone",
+  "background_color": "#fffaf1",
+  "theme_color": "#63c7a5",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
