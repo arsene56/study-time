@@ -50,7 +50,7 @@ public class PlanningService {
             repository.insertPlanItem(new PlanItemRow(
                     UUID.randomUUID().toString(), planId, item.draft().taskId(), item.draft().kind(),
                     item.draft().subject(), item.draft().title(), item.draft().taskType(), item.draft().icon(),
-                    item.draft().minutes(), order++, item.start(), item.end(), "PENDING", 0));
+                    item.draft().minutes(), order++, item.start(), item.end(), "PENDING", 0, null, null));
         }
         repository.confirmBatch(batchId);
         repository.insertActivity(

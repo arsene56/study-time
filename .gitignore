@@ -36,6 +36,7 @@ yarn-error.log*
 next-env.d.ts
 /dist/
 **/dist/
+**/dist-h5/
 **/.temp/
 **/.cache/
 **/.swc/

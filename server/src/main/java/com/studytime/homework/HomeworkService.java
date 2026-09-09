@@ -1,12 +1,11 @@
 package com.studytime.homework;
 
-import com.studytime.api.ApiModels.CompletePlanItemRequest;
 import com.studytime.api.ApiModels.DemoContextView;
 import com.studytime.api.ApiModels.HomeworkBatchView;
 import com.studytime.api.ApiModels.PlanView;
 import com.studytime.domain.StudyTimeRepository;
 import com.studytime.domain.StudyTimeRepository.ChildRow;
-import com.studytime.domain.StudyTimeRepository.PlanItemRow;
+import com.studytime.domain.StudyTimeRepository.EstimateRow;
 import com.studytime.domain.StudyTimeRepository.TaskRow;
 import com.studytime.realtime.PlanUpdateWebSocketHandler;
 import com.studytime.storage.HomeworkStorage;
@@ -51,9 +50,13 @@ public class HomeworkService {
         List<TaskSeed> seeds = defaultSeeds(child.grade());
         for (int index = 0; index < seeds.size(); index++) {
             TaskSeed seed = seeds.get(index);
+            EstimateRow estimate = repository.findPersonalEstimate(
+                    childId, seed.subject(), seed.taskType(), seed.minutes());
+            boolean personalized = estimate.sampleSize() >= 2;
             repository.insertTask(new TaskRow(
                     UUID.randomUUID().toString(), batchId, childId, seed.subject(), seed.title(),
-                    seed.taskType(), seed.icon(), seed.minutes(), seed.difficulty(), seed.eyeLoad(),
+                    seed.taskType(), seed.icon(), personalized ? estimate.minutes() : seed.minutes(),
+                    personalized ? "HISTORY" : "GRADE_DEFAULT", seed.difficulty(), seed.eyeLoad(),
                     seed.confidence(), "PENDING_CONFIRMATION", index));
         }
         repository.insertActivity(
@@ -73,35 +76,6 @@ public class HomeworkService {
         repository.requireChild(childId);
         return repository.findTodayPlan(childId)
                 .orElseThrow(() -> new IllegalArgumentException("今天还没有生成作业计划"));
-    }
-
-    @Transactional
-    public PlanView completeItem(String itemId, CompletePlanItemRequest request) {
-        PlanItemRow item = repository.requirePlanItemForUpdate(itemId);
-        String childId = repository.findChildIdByPlan(item.planId());
-        ChildRow child = repository.requireChild(childId);
-        if (!"DONE".equals(item.status())) {
-            repository.completePlanItem(item);
-            int stars = "BREAK".equals(item.kind()) ? 1 : 5;
-            repository.addStars(childId, stars);
-            String actorId = valueOr(request == null ? null : request.actorId(), demoChildMemberId(childId));
-            String actorName = valueOr(request == null ? null : request.actorName(), child.name());
-            String relation = valueOr(request == null ? null : request.actorRelation(), "孩子");
-            repository.insertActivity(
-                    UUID.randomUUID().toString(), child.familyId(), childId, actorId, actorName, relation,
-                    "TASK_COMPLETED", "完成了“" + item.title() + "”，获得 " + stars + " 颗星");
-        }
-        PlanView plan = repository.findTodayPlan(childId).orElseThrow();
-        updates.publish(childId, "TASK_COMPLETED");
-        return plan;
-    }
-
-    private String valueOr(String value, String fallback) {
-        return value == null || value.isBlank() ? fallback : value;
-    }
-
-    private String demoChildMemberId(String childId) {
-        return childId.replace("demo-child-", "demo-child-member-");
     }
 
     private List<TaskSeed> defaultSeeds(int grade) {

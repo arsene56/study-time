@@ -22,6 +22,7 @@ export type RecognizedTask = {
   taskType: string;
   icon: string;
   estimatedMinutes: number;
+  estimateSource: 'GRADE_DEFAULT' | 'HISTORY';
   difficulty: 'EASY' | 'MODERATE' | 'CHALLENGE';
   eyeLoad: 'LOW' | 'HIGH';
   confidence: 'LOW' | 'HIGH';
@@ -51,6 +52,8 @@ export type PlanItem = {
   plannedEnd: string;
   status: 'PENDING' | 'ACTIVE' | 'DONE' | 'SKIPPED';
   actualSeconds: number;
+  startedAt: string | null;
+  overrunDecision: 'SKIP' | 'CONTINUE' | null;
 };
 
 export type TodayPlan = {
@@ -60,15 +63,93 @@ export type TodayPlan = {
   startTime: string;
   originalEndTime: string;
   plannedEndTime: string;
+  bedtimeBufferMinutes: number;
+  warningMessage: string | null;
   status: string;
   version: number;
   items: PlanItem[];
 };
 
 export type RealtimeEvent = {
-  type: 'HOMEWORK_RECOGNIZED' | 'PLAN_CREATED' | 'TASK_COMPLETED';
+  type:
+    | 'HOMEWORK_RECOGNIZED'
+    | 'PLAN_CREATED'
+    | 'TASK_STARTED'
+    | 'TASK_COMPLETED'
+    | 'PLAN_ADJUSTED'
+    | 'PLAN_RESCHEDULED'
+    | 'PLAN_REORDERED'
+    | 'WEEKLY_REPORT_UPDATED'
+    | 'REWARD_UPDATED'
+    | 'REWARD_REQUESTED'
+    | 'REWARD_APPROVED'
+    | 'REWARD_REJECTED';
   childId: string;
   occurredAt: string;
+};
+
+export type Activity = {
+  id: string;
+  actorName: string;
+  actorRelation: string;
+  actionType: string;
+  description: string;
+  createdAt: string;
+};
+
+export type SubjectSummary = {
+  subject: string;
+  completedTasks: number;
+  averageEstimatedMinutes: number;
+  averageActualMinutes: number;
+};
+
+export type Badge = {
+  id: string;
+  icon: string;
+  title: string;
+  description: string;
+  unlocked: boolean;
+};
+
+export type WeeklyComment = {
+  id: string;
+  actorName: string;
+  actorRelation: string;
+  content: string;
+  createdAt: string;
+};
+
+export type WeeklyReport = {
+  weekStart: string;
+  weekEnd: string;
+  completedTasks: number;
+  totalTasks: number;
+  completionRate: number;
+  focusedMinutes: number;
+  starsEarned: number;
+  streakDays: number;
+  subjects: SubjectSummary[];
+  badges: Badge[];
+  comments: WeeklyComment[];
+};
+
+export type Reward = {
+  id: string;
+  name: string;
+  icon: string;
+  requiredStars: number;
+  category: string;
+  sourceType: 'BUILTIN' | 'CUSTOM';
+  createdByName: string;
+  canRedeem: boolean;
+  redemptionId: string | null;
+  redemptionStatus: 'REQUESTED' | 'APPROVED' | 'REJECTED' | null;
+};
+
+export type RewardStore = {
+  childStars: number;
+  rewards: Reward[];
 };
 
 export const demoChildId = 'demo-child-xiaoman';

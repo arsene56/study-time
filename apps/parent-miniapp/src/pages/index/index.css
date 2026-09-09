@@ -12,6 +12,9 @@
 .childName, .childGrade { display: block; }
 .childName { font-size: 15px; font-weight: 800; }
 .childGrade { margin-top: 3px; font-size: 12px; }
+.mainTabs { position: sticky; top: 8px; z-index: 5; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 16px; padding: 6px; border-radius: 18px; background: rgba(255,255,255,.94); box-shadow: 0 8px 24px rgba(56,101,87,.09); }
+.mainTabs button { margin: 0; padding: 8px 4px; border-radius: 13px; color: #6d817a; background: transparent; font-size: 13px; font-weight: 750; line-height: 1.4; }
+.mainTabs button.active { color: #255b4a; background: #dff5e9; }
 .card { margin-top: 16px; padding: 19px; border-radius: 24px; background: #fff; box-shadow: 0 9px 28px rgba(56, 101, 87, .07); }
 .cardHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .step { display: block; margin-bottom: 5px; color: #4a8e78; font-size: 13px; font-weight: 750; }
@@ -34,6 +37,8 @@
 .taskSubject { margin-top: 3px; color: #70817c; font-size: 12px; }
 .taskTitle { overflow: hidden; color: #2a463e; font-size: 15px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
 .minutes, .itemStatus { color: #4d7a6c; font-size: 12px; }
+.estimateSource { display: inline-block; margin-top: 5px; padding: 2px 7px; border-radius: 99px; color: #84612e; background: #fff1da; font-size: 10px; }
+.estimateSource.history { color: #2f765f; background: #ddf4e9; }
 .startRow { display: flex; align-items: center; justify-content: space-between; margin: 15px 2px 12px; color: #5b706a; font-size: 14px; }
 .timeInput { width: 80px; padding: 8px 10px; border-radius: 12px; background: #edf7f2; font-size: 16px; font-weight: 750; text-align: center; }
 .confirmButton { width: 100%; margin-top: 10px; }
@@ -41,3 +46,39 @@
 .planItem { margin-top: 9px; }
 .planItem.done { opacity: .55; }
 .planTime { flex: 0 0 42px; color: #355e52; font-size: 15px; font-weight: 800; }
+.emptyCard { color: #6a7e77; font-size: 15px; text-align: center; }
+.warning { margin: 0 0 10px; padding: 11px 13px; border: 1px solid #f2cc96; border-radius: 14px; color: #8b5b24; background: #fff6e8; font-size: 13px; line-height: 1.5; }
+.buffer { display: block; margin-bottom: 12px; color: #657b74; font-size: 12px; }
+.planControls { flex: 0 0 auto; display: grid; justify-items: end; gap: 6px; }
+.itemStatus { padding: 3px 7px; border-radius: 99px; background: #edf4f1; }
+.status-active { color: #9a5a18; background: #fff0d9; }
+.status-done { color: #287159; background: #dff3ea; }
+.status-skipped { color: #805f3a; background: #f3e9dd; }
+.orderRow { display: flex; gap: 4px; }
+.orderRow button { width: 29px; height: 27px; margin: 0; padding: 0; border-radius: 8px; color: #497668; background: #eaf5f0; font-size: 15px; line-height: 27px; }
+.activityList, .subjectList, .rewardList { display: grid; gap: 9px; }
+.activityItem { display: grid; gap: 4px; padding: 11px 12px; border-radius: 15px; background: #f8fbf9; }
+.activityActor { color: #3f806c; font-size: 12px; font-weight: 750; }
+.activityText { color: #304b43; font-size: 14px; line-height: 1.5; }
+.activityTime { color: #83918d; font-size: 10px; }
+.metricGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.metricGrid view { display: grid; gap: 5px; padding: 13px 6px; border-radius: 16px; text-align: center; background: #edf8f3; }
+.metricGrid text:first-child { color: #2c6655; font-size: 17px; font-weight: 800; }
+.metricGrid text:last-child { color: #70817c; font-size: 11px; }
+.sectionLabel { display: block; margin: 20px 0 9px; color: #29483f; font-size: 16px; font-weight: 800; }
+.subjectList view { display: flex; justify-content: space-between; gap: 8px; padding: 11px 12px; border-radius: 14px; background: #f8fbf9; }
+.subjectList text:first-child { font-size: 14px; font-weight: 800; }
+.subjectList text:last-child { color: #687b75; font-size: 11px; }
+.badgeRow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.badgeRow view { display: grid; justify-items: center; gap: 4px; padding: 12px 5px; border-radius: 15px; filter: grayscale(1); opacity: .45; background: #f3f5f4; font-size: 11px; }
+.badgeRow view.unlocked { filter: none; opacity: 1; background: #fff4dd; }
+.badgeRow text:first-child { font-size: 25px; }
+.inlineForm, .rewardForm { display: flex; gap: 7px; margin-top: 12px; }
+.inlineForm input, .rewardForm input { flex: 1; min-width: 0; padding: 9px 11px; border-radius: 12px; background: #f1f8f5; font-size: 12px; }
+.inlineForm button, .rewardForm button { flex: 0 0 auto; margin: 0; padding: 0 12px; border-radius: 12px; color: #fff; background: #54b996; font-size: 12px; line-height: 38px; }
+.rewardItem { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 16px; background: #f8fbf9; }
+.rewardIcon { flex: 0 0 40px; font-size: 28px; text-align: center; }
+.approvalButtons { display: grid; gap: 4px; }
+.approvalButtons button { margin: 0; padding: 3px 9px; border-radius: 9px; color: #fff; background: #54b996; font-size: 10px; line-height: 1.7; }
+.approvalButtons button:last-child { color: #815d35; background: #f4e9db; }
+.rewardForm input:nth-child(2) { flex: 0 0 52px; }

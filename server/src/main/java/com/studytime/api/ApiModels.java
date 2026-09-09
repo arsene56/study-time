@@ -1,6 +1,10 @@
 package com.studytime.api;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
@@ -27,6 +31,7 @@ public final class ApiModels {
             String taskType,
             String icon,
             int estimatedMinutes,
+            String estimateSource,
             String difficulty,
             String eyeLoad,
             String confidence,
@@ -45,7 +50,30 @@ public final class ApiModels {
     public record CreatePlanRequest(@NotBlank String startTime) {
     }
 
-    public record CompletePlanItemRequest(String actorId, String actorName, String actorRelation) {
+    public record ActorRequest(String actorId, String actorName, String actorRelation) {
+    }
+
+    public record CompletePlanItemRequest(
+            String actorId,
+            String actorName,
+            String actorRelation,
+            @Min(0) Integer actualSeconds) {
+    }
+
+    public record OverrunDecisionRequest(
+            @NotBlank String decision,
+            @Min(0) Integer actualSeconds,
+            @Min(1) Integer extraMinutes,
+            String actorId,
+            String actorName,
+            String actorRelation) {
+    }
+
+    public record ReorderPlanRequest(
+            @NotEmpty List<String> orderedItemIds,
+            String actorId,
+            String actorName,
+            String actorRelation) {
     }
 
     public record PlanItemView(
@@ -61,7 +89,9 @@ public final class ApiModels {
             String plannedStart,
             String plannedEnd,
             String status,
-            int actualSeconds) {
+            int actualSeconds,
+            String startedAt,
+            String overrunDecision) {
     }
 
     public record PlanView(
@@ -71,6 +101,8 @@ public final class ApiModels {
             String startTime,
             String originalEndTime,
             String plannedEndTime,
+            int bedtimeBufferMinutes,
+            String warningMessage,
             String status,
             int version,
             List<PlanItemView> items) {
@@ -83,6 +115,85 @@ public final class ApiModels {
             String actionType,
             String description,
             String createdAt) {
+    }
+
+    public record SubjectSummaryView(
+            String subject,
+            int completedTasks,
+            int averageEstimatedMinutes,
+            int averageActualMinutes) {
+    }
+
+    public record BadgeView(String id, String icon, String title, String description, boolean unlocked) {
+    }
+
+    public record WeeklyCommentView(
+            String id,
+            String actorName,
+            String actorRelation,
+            String content,
+            String createdAt) {
+    }
+
+    public record WeeklyReportView(
+            String weekStart,
+            String weekEnd,
+            int completedTasks,
+            int totalTasks,
+            int completionRate,
+            int focusedMinutes,
+            int starsEarned,
+            int streakDays,
+            List<SubjectSummaryView> subjects,
+            List<BadgeView> badges,
+            List<WeeklyCommentView> comments) {
+    }
+
+    public record AddWeeklyCommentRequest(
+            @NotBlank @Size(max = 240) String content,
+            String actorId,
+            String actorName,
+            String actorRelation) {
+    }
+
+    public record RewardView(
+            String id,
+            String name,
+            String icon,
+            int requiredStars,
+            String category,
+            String sourceType,
+            String createdByName,
+            boolean canRedeem,
+            String redemptionId,
+            String redemptionStatus) {
+    }
+
+    public record RewardStoreView(int childStars, List<RewardView> rewards) {
+    }
+
+    public record CreateRewardRequest(
+            @NotBlank @Size(max = 80) String name,
+            @NotBlank String icon,
+            @Min(1) int requiredStars,
+            @NotBlank String category,
+            String actorId,
+            String actorName,
+            String actorRelation) {
+    }
+
+    public record RedeemRewardRequest(
+            @NotBlank String childId,
+            String actorId,
+            String actorName,
+            String actorRelation) {
+    }
+
+    public record ReviewRewardRequest(
+            @NotNull Boolean approved,
+            String actorId,
+            String actorName,
+            String actorRelation) {
     }
 
     public record ApiMessage(String message) {

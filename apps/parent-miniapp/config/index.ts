@@ -35,9 +35,8 @@ export default defineConfig<'webpack5'>(async (merge) => {
         port: 5174,
         proxy: [
           {
-            context: ['/api', '/ws'],
+            context: ['/api'],
             target: 'http://127.0.0.1:8080',
-            ws: true,
           },
         ],
       },
