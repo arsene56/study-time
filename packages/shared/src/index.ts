@@ -83,7 +83,10 @@ export type RealtimeEvent = {
     | 'REWARD_UPDATED'
     | 'REWARD_REQUESTED'
     | 'REWARD_APPROVED'
-    | 'REWARD_REJECTED';
+    | 'REWARD_REJECTED'
+    | 'WEEKLY_GOAL_UPDATED'
+    | 'WEEKLY_BONUS_CLAIMED'
+    | 'DIDI_SKIN_EQUIPPED';
   childId: string;
   occurredAt: string;
 };
@@ -109,7 +112,38 @@ export type Badge = {
   icon: string;
   title: string;
   description: string;
+  progress: number;
+  target: number;
   unlocked: boolean;
+  unlockedAt: string | null;
+};
+
+export type DailyProgress = {
+  date: string;
+  dayLabel: string;
+  completedTasks: number;
+  totalTasks: number;
+  completionRate: number;
+  focusedMinutes: number;
+};
+
+export type WeeklyComparison = {
+  completionRateChange: number;
+  focusedMinutesChange: number;
+  trendText: string;
+};
+
+export type WeeklyGoal = {
+  id: string;
+  targetTasks: number;
+  targetFocusMinutes: number;
+  bonusStars: number;
+  taskProgress: number;
+  focusProgress: number;
+  overallProgress: number;
+  achieved: boolean;
+  status: 'IN_PROGRESS' | 'READY' | 'CLAIMED';
+  claimedAt: string | null;
 };
 
 export type WeeklyComment = {
@@ -129,6 +163,10 @@ export type WeeklyReport = {
   focusedMinutes: number;
   starsEarned: number;
   streakDays: number;
+  growthMessage: string;
+  dailyProgress: DailyProgress[];
+  comparison: WeeklyComparison;
+  goal: WeeklyGoal | null;
   subjects: SubjectSummary[];
   badges: Badge[];
   comments: WeeklyComment[];
@@ -143,13 +181,38 @@ export type Reward = {
   sourceType: 'BUILTIN' | 'CUSTOM';
   createdByName: string;
   canRedeem: boolean;
+  owned: boolean;
+  equipped: boolean;
   redemptionId: string | null;
   redemptionStatus: 'REQUESTED' | 'APPROVED' | 'REJECTED' | null;
 };
 
+export type RewardRedemption = {
+  id: string;
+  rewardId: string;
+  rewardName: string;
+  rewardIcon: string;
+  requiredStars: number;
+  status: 'REQUESTED' | 'APPROVED' | 'REJECTED';
+  requestedByName: string;
+  reviewedByName: string | null;
+  requestedAt: string;
+  reviewedAt: string | null;
+};
+
+export type StarTransaction = {
+  id: string;
+  amount: number;
+  reason: string;
+  createdAt: string;
+};
+
 export type RewardStore = {
   childStars: number;
+  equippedSkinRewardId: string | null;
   rewards: Reward[];
+  redemptions: RewardRedemption[];
+  starTransactions: StarTransaction[];
 };
 
 export const demoChildId = 'demo-child-xiaoman';

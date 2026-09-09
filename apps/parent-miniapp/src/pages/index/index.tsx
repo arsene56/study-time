@@ -12,6 +12,14 @@ const apiBase = process.env.TARO_ENV === 'h5' ? '' : 'http://127.0.0.1:8080';
 type Tab = 'homework' | 'plan' | 'growth' | 'rewards';
 const parentActor = { actorId: 'demo-parent-mom', actorName: '林妈妈', actorRelation: '妈妈' };
 
+function currentMonday(offsetWeeks: number) {
+  const date = new Date();
+  const day = date.getDay() || 7;
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() - day + 1 + offsetWeeks * 7);
+  return date.toISOString().slice(0, 10);
+}
+
 async function request<T>(options: Taro.request.Option): Promise<T> {
   const response = await Taro.request<T>({ ...options, url: `${apiBase}${options.url}` });
   if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -35,6 +43,10 @@ export default function ParentHome() {
   const [comment, setComment] = useState('这周你越来越会自己安排了，继续加油！');
   const [rewardName, setRewardName] = useState('周末一起去公园');
   const [rewardStars, setRewardStars] = useState('40');
+  const [goalTasks, setGoalTasks] = useState('5');
+  const [goalFocus, setGoalFocus] = useState('60');
+  const [goalBonus, setGoalBonus] = useState('10');
+  const [weekOffset, setWeekOffset] = useState(0);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('本地演示身份：林妈妈');
 
@@ -47,18 +59,23 @@ export default function ParentHome() {
       const [planResult, activityResult, weeklyResult, rewardResult] = await Promise.allSettled([
         request<TodayPlan>({ url: `/api/v1/children/${childId}/today-plan`, method: 'GET' }),
         request<Activity[]>({ url: `/api/v1/children/${childId}/activities`, method: 'GET' }),
-        request<WeeklyReport>({ url: `/api/v1/children/${childId}/weekly-report`, method: 'GET' }),
+        request<WeeklyReport>({ url: `/api/v1/children/${childId}/weekly-report?weekStart=${currentMonday(weekOffset)}`, method: 'GET' }),
         request<RewardStore>({ url: `/api/v1/families/${contextData.familyId}/rewards?childId=${childId}`, method: 'GET' }),
       ]);
       setPlan(planResult.status === 'fulfilled' ? planResult.value : null);
       setActivities(activityResult.status === 'fulfilled' ? activityResult.value : []);
       setWeekly(weeklyResult.status === 'fulfilled' ? weeklyResult.value : null);
+      if (weekOffset === 0 && weeklyResult.status === 'fulfilled' && weeklyResult.value.goal) {
+        setGoalTasks(String(weeklyResult.value.goal.targetTasks));
+        setGoalFocus(String(weeklyResult.value.goal.targetFocusMinutes));
+        setGoalBonus(String(weeklyResult.value.goal.bonusStars));
+      }
       setRewards(rewardResult.status === 'fulfilled' ? rewardResult.value : null);
       if (!quiet) setNotice('孩子端计划、进度与成长数据已同步');
     } catch (error) {
       setNotice(error instanceof Error ? error.message : '暂时无法连接服务');
     }
-  }, [childId, context]);
+  }, [childId, context, weekOffset]);
 
   useDidShow(() => { void loadDashboard(true); });
 
@@ -139,10 +156,28 @@ export default function ParentHome() {
     try {
       const updated = await request<WeeklyReport>({
         url: `/api/v1/children/${childId}/weekly-comments`, method: 'POST', header: { 'Content-Type': 'application/json' },
-        data: { ...parentActor, content: comment.trim() },
+        data: { ...parentActor, content: comment.trim(), weekStart: weekly?.weekStart },
       });
       setWeekly(updated); setComment(''); setNotice('鼓励已写入家庭鼓励墙');
     } catch (error) { setNotice(error instanceof Error ? error.message : '点评保存失败'); }
+    finally { setBusy(false); }
+  };
+
+  const saveWeeklyGoal = async () => {
+    const targetTasks = Number(goalTasks);
+    const targetFocusMinutes = Number(goalFocus);
+    const bonusStars = Number(goalBonus);
+    if (![targetTasks, targetFocusMinutes, bonusStars].every((value) => Number.isInteger(value) && value > 0)) {
+      setNotice('周目标和奖励星星需要填写正整数'); return;
+    }
+    setBusy(true);
+    try {
+      const updated = await request<WeeklyReport>({
+        url: `/api/v1/children/${childId}/weekly-goal`, method: 'POST', header: { 'Content-Type': 'application/json' },
+        data: { ...parentActor, targetTasks, targetFocusMinutes, bonusStars },
+      });
+      setWeekly(updated); setNotice('本周成长目标已同步到孩子端');
+    } catch (error) { setNotice(error instanceof Error ? error.message : '周目标保存失败'); }
     finally { setBusy(false); }
   };
 
@@ -204,18 +239,30 @@ export default function ParentHome() {
       </>}
 
       {tab === 'growth' && <View className="card">
-        <View className="cardHead"><View><Text className="step">{weekly?.weekStart} 至 {weekly?.weekEnd}</Text><Text className="cardTitle">{child?.name}的成长周报</Text></View><Text className="readyPill">全家可见</Text></View>
+        <View className="cardHead"><View><Text className="step">{weekly?.weekStart} 至 {weekly?.weekEnd}</Text><Text className="cardTitle">{child?.name}的成长周报</Text></View><View className="weekControls"><Button onClick={() => setWeekOffset((value) => value - 1)}>‹</Button><Button disabled={weekOffset === 0} onClick={() => setWeekOffset((value) => Math.min(0,value + 1))}>›</Button></View></View>
         {weekly && <><View className="metricGrid"><View><Text>{weekly.completionRate}%</Text><Text>完成率</Text></View><View><Text>{weekly.focusedMinutes} 分钟</Text><Text>专注时光</Text></View><View><Text>{weekly.streakDays} 天</Text><Text>连续打卡</Text></View></View>
+          <View className="growthMessage"><Text>🤖</Text><View><Text>{weekly.growthMessage}</Text><Text>{weekly.comparison.trendText}</Text></View></View>
+          <Text className="sectionLabel">一周趋势</Text><View className="dailyBars">{weekly.dailyProgress.map((day) => <View key={day.date}><View className="bar"><View style={{ height: `${Math.max(day.completionRate ? 10 : 0,day.completionRate)}%` }} /></View><Text>{day.dayLabel.slice(1)}</Text><Text>{day.completedTasks}/{day.totalTasks}</Text></View>)}</View>
+          {weekly.goal && <View className={`goalCard status-${weekly.goal.status.toLowerCase()}`}><View className="goalTitle"><View><Text>本周成长目标</Text><Text>{weekly.goal.status === 'CLAIMED' ? '奖励已领取' : weekly.goal.achieved ? '已达成，等待孩子领取' : `进度 ${weekly.goal.overallProgress}%`}</Text></View><Text>+{weekly.goal.bonusStars} ⭐</Text></View><View className="goalLine"><Text>完成 {weekly.completedTasks}/{weekly.goal.targetTasks} 项</Text><Text>专注 {weekly.focusedMinutes}/{weekly.goal.targetFocusMinutes} 分钟</Text></View></View>}
+          {weekOffset === 0 && weekly.goal?.status !== 'CLAIMED' && <><Text className="sectionLabel">设置本周目标</Text><View className="goalForm"><View><Text>作业项数</Text><Input value={goalTasks} type="number" onInput={(event) => setGoalTasks(event.detail.value)} /></View><View><Text>专注分钟</Text><Input value={goalFocus} type="number" onInput={(event) => setGoalFocus(event.detail.value)} /></View><View><Text>奖励星星</Text><Input value={goalBonus} type="number" onInput={(event) => setGoalBonus(event.detail.value)} /></View><Button disabled={busy} onClick={() => void saveWeeklyGoal()}>保存并同步</Button></View></>}
           <Text className="sectionLabel">学科时间曲线</Text><View className="subjectList">{weekly.subjects.map((item) => <View key={item.subject}><Text>{item.subject}</Text><Text>完成 {item.completedTasks} 项 · 预计 {item.averageEstimatedMinutes} / 实际 {item.averageActualMinutes} 分钟</Text></View>)}</View>
-          <Text className="sectionLabel">里程碑</Text><View className="badgeRow">{weekly.badges.map((item) => <View className={item.unlocked ? 'unlocked' : ''} key={item.id}><Text>{item.icon}</Text><Text>{item.title}</Text></View>)}</View>
+          <Text className="sectionLabel">里程碑</Text><View className="badgeRow">{weekly.badges.map((item) => <View className={item.unlocked ? 'unlocked' : ''} key={item.id}><Text>{item.icon}</Text><Text>{item.title}</Text><Text>{item.unlocked ? '已解锁' : `${item.progress}/${item.target}`}</Text></View>)}</View>
           <Text className="sectionLabel">家庭鼓励墙</Text><View className="activityList">{weekly.comments.map((item) => <View className="activityItem" key={item.id}><Text className="activityActor">{item.actorName} · {item.actorRelation}</Text><Text className="activityText">{item.content}</Text></View>)}</View>
           <View className="inlineForm"><Input value={comment} maxlength={240} onInput={(event) => setComment(event.detail.value)} /><Button disabled={busy} onClick={() => void addComment()}>发送鼓励</Button></View></>}
       </View>}
 
       {tab === 'rewards' && <View className="card">
         <View className="cardHead"><View><Text className="step">当前 {rewards?.childStars ?? 0} 颗星</Text><Text className="cardTitle">奖励与审批</Text></View><Text className="statusPill">虚拟 + 家庭</Text></View>
-        <View className="rewardList">{rewards?.rewards.map((reward) => <View className="rewardItem" key={reward.id}><Text className="rewardIcon">{reward.icon}</Text><View className="taskText"><Text className="taskTitle">{reward.name}</Text><Text className="taskSubject">{reward.requiredStars} 颗星 · {reward.sourceType === 'BUILTIN' ? '内置奖励' : `由${reward.createdByName}设置`}</Text></View>{reward.redemptionStatus === 'REQUESTED' && reward.redemptionId ? <View className="approvalButtons"><Button disabled={busy} onClick={() => void reviewReward(reward.redemptionId!,true)}>批准</Button><Button disabled={busy} onClick={() => void reviewReward(reward.redemptionId!,false)}>暂缓</Button></View> : <Text className="itemStatus">{reward.redemptionStatus === 'APPROVED' ? '已获得' : reward.canRedeem ? '可兑换' : '继续积累'}</Text>}</View>)}</View>
+        <View className="rewardList">{rewards?.rewards.map((reward) => <View className={`rewardItem ${reward.equipped ? 'equipped' : ''}`} key={reward.id}>
+          <Text className="rewardIcon">{reward.icon}</Text>
+          <View className="taskText"><Text className="taskTitle">{reward.name}</Text><Text className="taskSubject">{reward.requiredStars} 颗星 · {reward.sourceType === 'BUILTIN' ? '内置奖励' : `由${reward.createdByName}设置`}</Text></View>
+          {reward.redemptionStatus === 'REQUESTED' && reward.redemptionId
+            ? <View className="approvalButtons"><Button disabled={busy} onClick={() => void reviewReward(reward.redemptionId!,true)}>批准</Button><Button disabled={busy} onClick={() => void reviewReward(reward.redemptionId!,false)}>暂缓</Button></View>
+            : <Text className="itemStatus">{reward.equipped ? '正在使用' : reward.category === 'SKIN' && reward.owned ? '已拥有' : reward.canRedeem ? '可兑换' : '继续积累'}</Text>}
+        </View>)}</View>
         <Text className="sectionLabel">设置家庭自定义奖励</Text><View className="rewardForm"><Input value={rewardName} placeholder="奖励名称" maxlength={80} onInput={(event) => setRewardName(event.detail.value)} /><Input value={rewardStars} type="number" placeholder="星星" onInput={(event) => setRewardStars(event.detail.value)} /><Button disabled={busy} onClick={() => void createReward()}>添加奖励</Button></View>
+        <Text className="sectionLabel">奖励申请记录</Text><View className="historyList">{rewards?.redemptions.map((item) => <View key={item.id}><Text className="historyIcon">{item.rewardIcon}</Text><View><Text className="historyTitle">{item.rewardName}</Text><Text className="historyMeta">{item.requestedByName}申请 · {item.requestedAt}</Text></View><Text className={`historyStatus status-${item.status.toLowerCase()}`}>{item.status === 'REQUESTED' ? '待审批' : item.status === 'APPROVED' ? '已批准' : '已暂缓'}</Text></View>)}</View>
+        <Text className="sectionLabel">星星账本</Text><View className="historyList">{rewards?.starTransactions.map((item) => <View key={item.id}><Text className="historyIcon">{item.amount > 0 ? '⭐' : '🎁'}</Text><View><Text className="historyTitle">{item.reason}</Text><Text className="historyMeta">{item.createdAt}</Text></View><Text className={item.amount > 0 ? 'starPlus' : 'starMinus'}>{item.amount > 0 ? '+' : ''}{item.amount}</Text></View>)}</View>
       </View>}
     </ScrollView>
   );

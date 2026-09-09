@@ -65,6 +65,28 @@
 .metricGrid view { display: grid; gap: 5px; padding: 13px 6px; border-radius: 16px; text-align: center; background: #edf8f3; }
 .metricGrid text:first-child { color: #2c6655; font-size: 17px; font-weight: 800; }
 .metricGrid text:last-child { color: #70817c; font-size: 11px; }
+.weekControls { display: flex; gap: 5px; }
+.weekControls button { width: 34px; height: 34px; margin: 0; padding: 0; border-radius: 11px; color: #36715f; background: #e7f5ef; font-size: 24px; line-height: 32px; }
+.growthMessage { display: flex; align-items: flex-start; gap: 10px; margin-top: 12px; padding: 13px; border-radius: 16px; background: linear-gradient(135deg,#edf8f3,#fff6e7); }
+.growthMessage > text { flex: 0 0 auto; font-size: 25px; }
+.growthMessage view { display: grid; gap: 5px; }
+.growthMessage view text:first-child { color: #355c50; font-size: 13px; line-height: 1.55; }
+.growthMessage view text:last-child { color: #3f8a72; font-size: 11px; font-weight: 750; }
+.dailyBars { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; height: 130px; padding: 11px 7px 8px; border-radius: 17px; background: #f8fbf9; }
+.dailyBars > view { display: grid; grid-template-rows: 1fr auto auto; justify-items: center; gap: 3px; }
+.dailyBars .bar { position: relative; align-self: stretch; width: 70%; overflow: hidden; border-radius: 6px; background: #e2efea; }
+.dailyBars .bar view { position: absolute; right: 0; bottom: 0; left: 0; border-radius: inherit; background: #59bb99; }
+.dailyBars text { color: #647a73; font-size: 9px; }
+.goalCard { margin-top: 14px; padding: 14px; border: 1px solid #efd29c; border-radius: 18px; background: #fff7e7; }
+.goalCard.status-ready { border-color: #7dcbb0; background: #eaf8f2; } .goalCard.status-claimed { border-color: #d6e6df; background: #f7faf8; }
+.goalTitle { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.goalTitle > view { display: grid; gap: 4px; } .goalTitle > view text:first-child { color: #375f53; font-size: 14px; font-weight: 800; } .goalTitle > view text:last-child { color: #657972; font-size: 11px; }
+.goalTitle > text { color: #9d661f; font-size: 17px; font-weight: 850; }
+.goalLine { display: flex; gap: 12px; margin-top: 10px; color: #5e746d; font-size: 11px; }
+.goalForm { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; }
+.goalForm > view { display: grid; gap: 5px; } .goalForm text { color: #677c75; font-size: 10px; }
+.goalForm input { min-width: 0; padding: 8px; border-radius: 10px; background: #eef7f3; font-size: 13px; }
+.goalForm button { grid-column: 1/-1; margin: 3px 0 0; border-radius: 12px; color: #fff; background: #54b996; font-size: 12px; line-height: 36px; }
 .sectionLabel { display: block; margin: 20px 0 9px; color: #29483f; font-size: 16px; font-weight: 800; }
 .subjectList view { display: flex; justify-content: space-between; gap: 8px; padding: 11px 12px; border-radius: 14px; background: #f8fbf9; }
 .subjectList text:first-child { font-size: 14px; font-weight: 800; }
@@ -73,12 +95,20 @@
 .badgeRow view { display: grid; justify-items: center; gap: 4px; padding: 12px 5px; border-radius: 15px; filter: grayscale(1); opacity: .45; background: #f3f5f4; font-size: 11px; }
 .badgeRow view.unlocked { filter: none; opacity: 1; background: #fff4dd; }
 .badgeRow text:first-child { font-size: 25px; }
+.badgeRow view text:last-child { color: #7b8d87; font-size: 9px; }
 .inlineForm, .rewardForm { display: flex; gap: 7px; margin-top: 12px; }
 .inlineForm input, .rewardForm input { flex: 1; min-width: 0; padding: 9px 11px; border-radius: 12px; background: #f1f8f5; font-size: 12px; }
 .inlineForm button, .rewardForm button { flex: 0 0 auto; margin: 0; padding: 0 12px; border-radius: 12px; color: #fff; background: #54b996; font-size: 12px; line-height: 38px; }
 .rewardItem { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 16px; background: #f8fbf9; }
+.rewardItem.equipped { box-shadow: inset 0 0 0 2px #73c5aa; background: #eaf8f2; }
 .rewardIcon { flex: 0 0 40px; font-size: 28px; text-align: center; }
 .approvalButtons { display: grid; gap: 4px; }
 .approvalButtons button { margin: 0; padding: 3px 9px; border-radius: 9px; color: #fff; background: #54b996; font-size: 10px; line-height: 1.7; }
 .approvalButtons button:last-child { color: #815d35; background: #f4e9db; }
 .rewardForm input:nth-child(2) { flex: 0 0 52px; }
+.historyList { display: grid; gap: 7px; }
+.historyList > view { display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 8px; padding: 10px; border-radius: 14px; background: #f8fbf9; }
+.historyList > view > view { display: grid; gap: 3px; }
+.historyIcon { font-size: 22px; text-align: center; } .historyTitle { color: #304a42; font-size: 12px; font-weight: 750; } .historyMeta { color: #82918c; font-size: 9px; }
+.historyStatus, .starPlus, .starMinus { padding: 3px 7px; border-radius: 99px; color: #7a674e; background: #f2eadf; font-size: 9px; font-weight: 750; }
+.historyStatus.status-approved, .starPlus { color: #2b755d; background: #def3e9; } .historyStatus.status-requested { color: #976023; background: #fff0d8; } .starMinus { color: #96602a; background: #fff0df; }

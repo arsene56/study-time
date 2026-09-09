@@ -4,9 +4,11 @@ import com.studytime.api.ApiModels.ActorRequest;
 import com.studytime.api.ApiModels.ActivityView;
 import com.studytime.api.ApiModels.AddWeeklyCommentRequest;
 import com.studytime.api.ApiModels.CompletePlanItemRequest;
+import com.studytime.api.ApiModels.ClaimWeeklyBonusRequest;
 import com.studytime.api.ApiModels.CreatePlanRequest;
 import com.studytime.api.ApiModels.CreateRewardRequest;
 import com.studytime.api.ApiModels.DemoContextView;
+import com.studytime.api.ApiModels.EquipSkinRequest;
 import com.studytime.api.ApiModels.HomeworkBatchView;
 import com.studytime.api.ApiModels.OverrunDecisionRequest;
 import com.studytime.api.ApiModels.PlanView;
@@ -14,6 +16,7 @@ import com.studytime.api.ApiModels.RedeemRewardRequest;
 import com.studytime.api.ApiModels.ReorderPlanRequest;
 import com.studytime.api.ApiModels.ReviewRewardRequest;
 import com.studytime.api.ApiModels.RewardStoreView;
+import com.studytime.api.ApiModels.SaveWeeklyGoalRequest;
 import com.studytime.api.ApiModels.WeeklyReportView;
 import com.studytime.domain.StudyTimeRepository;
 import com.studytime.growth.GrowthService;
@@ -31,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalTime;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -112,8 +116,10 @@ public class StudyTimeController {
     }
 
     @GetMapping("/children/{childId}/weekly-report")
-    public WeeklyReportView weeklyReport(@PathVariable String childId) {
-        return growthService.weeklyReport(childId);
+    public WeeklyReportView weeklyReport(
+            @PathVariable String childId,
+            @RequestParam(required = false) LocalDate weekStart) {
+        return growthService.weeklyReport(childId, weekStart);
     }
 
     @PostMapping("/children/{childId}/weekly-comments")
@@ -121,6 +127,20 @@ public class StudyTimeController {
             @PathVariable String childId,
             @Valid @RequestBody AddWeeklyCommentRequest request) {
         return growthService.addComment(childId, request);
+    }
+
+    @PostMapping("/children/{childId}/weekly-goal")
+    public WeeklyReportView saveWeeklyGoal(
+            @PathVariable String childId,
+            @Valid @RequestBody SaveWeeklyGoalRequest request) {
+        return growthService.saveWeeklyGoal(childId, request);
+    }
+
+    @PostMapping("/children/{childId}/weekly-bonus/claim")
+    public WeeklyReportView claimWeeklyBonus(
+            @PathVariable String childId,
+            @RequestBody(required = false) ClaimWeeklyBonusRequest request) {
+        return growthService.claimWeeklyBonus(childId, request);
     }
 
     @GetMapping("/families/{familyId}/rewards")
@@ -150,5 +170,12 @@ public class StudyTimeController {
             @PathVariable String redemptionId,
             @Valid @RequestBody ReviewRewardRequest request) {
         return growthService.review(redemptionId, request);
+    }
+
+    @PostMapping("/rewards/{rewardId}/equip")
+    public RewardStoreView equipSkin(
+            @PathVariable String rewardId,
+            @Valid @RequestBody EquipSkinRequest request) {
+        return growthService.equipSkin(rewardId, request);
     }
 }

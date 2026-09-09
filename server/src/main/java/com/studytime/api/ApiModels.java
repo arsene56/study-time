@@ -124,7 +124,43 @@ public final class ApiModels {
             int averageActualMinutes) {
     }
 
-    public record BadgeView(String id, String icon, String title, String description, boolean unlocked) {
+    public record DailyProgressView(
+            String date,
+            String dayLabel,
+            int completedTasks,
+            int totalTasks,
+            int completionRate,
+            int focusedMinutes) {
+    }
+
+    public record WeeklyComparisonView(
+            int completionRateChange,
+            int focusedMinutesChange,
+            String trendText) {
+    }
+
+    public record WeeklyGoalView(
+            String id,
+            int targetTasks,
+            int targetFocusMinutes,
+            int bonusStars,
+            int taskProgress,
+            int focusProgress,
+            int overallProgress,
+            boolean achieved,
+            String status,
+            String claimedAt) {
+    }
+
+    public record BadgeView(
+            String id,
+            String icon,
+            String title,
+            String description,
+            int progress,
+            int target,
+            boolean unlocked,
+            String unlockedAt) {
     }
 
     public record WeeklyCommentView(
@@ -144,6 +180,10 @@ public final class ApiModels {
             int focusedMinutes,
             int starsEarned,
             int streakDays,
+            String growthMessage,
+            List<DailyProgressView> dailyProgress,
+            WeeklyComparisonView comparison,
+            WeeklyGoalView goal,
             List<SubjectSummaryView> subjects,
             List<BadgeView> badges,
             List<WeeklyCommentView> comments) {
@@ -151,6 +191,22 @@ public final class ApiModels {
 
     public record AddWeeklyCommentRequest(
             @NotBlank @Size(max = 240) String content,
+            String weekStart,
+            String actorId,
+            String actorName,
+            String actorRelation) {
+    }
+
+    public record SaveWeeklyGoalRequest(
+            @Min(1) int targetTasks,
+            @Min(1) int targetFocusMinutes,
+            @Min(1) int bonusStars,
+            String actorId,
+            String actorName,
+            String actorRelation) {
+    }
+
+    public record ClaimWeeklyBonusRequest(
             String actorId,
             String actorName,
             String actorRelation) {
@@ -165,11 +221,38 @@ public final class ApiModels {
             String sourceType,
             String createdByName,
             boolean canRedeem,
+            boolean owned,
+            boolean equipped,
             String redemptionId,
             String redemptionStatus) {
     }
 
-    public record RewardStoreView(int childStars, List<RewardView> rewards) {
+    public record RewardRedemptionView(
+            String id,
+            String rewardId,
+            String rewardName,
+            String rewardIcon,
+            int requiredStars,
+            String status,
+            String requestedByName,
+            String reviewedByName,
+            String requestedAt,
+            String reviewedAt) {
+    }
+
+    public record StarTransactionView(
+            String id,
+            int amount,
+            String reason,
+            String createdAt) {
+    }
+
+    public record RewardStoreView(
+            int childStars,
+            String equippedSkinRewardId,
+            List<RewardView> rewards,
+            List<RewardRedemptionView> redemptions,
+            List<StarTransactionView> starTransactions) {
     }
 
     public record CreateRewardRequest(
@@ -191,6 +274,13 @@ public final class ApiModels {
 
     public record ReviewRewardRequest(
             @NotNull Boolean approved,
+            String actorId,
+            String actorName,
+            String actorRelation) {
+    }
+
+    public record EquipSkinRequest(
+            @NotBlank String childId,
             String actorId,
             String actorName,
             String actorRelation) {

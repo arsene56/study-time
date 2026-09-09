@@ -1,6 +1,9 @@
 package com.studytime.growth;
 
+import com.studytime.api.ApiModels.DailyProgressView;
+import com.studytime.api.ApiModels.RewardRedemptionView;
 import com.studytime.api.ApiModels.RewardView;
+import com.studytime.api.ApiModels.StarTransactionView;
 import com.studytime.api.ApiModels.SubjectSummaryView;
 import com.studytime.api.ApiModels.WeeklyCommentView;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -10,7 +13,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Repository
 public class GrowthRepository {
@@ -35,16 +41,29 @@ public class GrowthRepository {
             String status) {
     }
 
+    public record WeeklyGoalRow(
+            String id,
+            String childId,
+            LocalDate weekStart,
+            int targetTasks,
+            int targetFocusMinutes,
+            int bonusStars,
+            String status,
+            LocalDateTime claimedAt) {
+    }
+
     public WeeklyTotals weeklyTotals(String childId, LocalDate weekStart, LocalDate weekEndExclusive) {
         int[] taskTotals = jdbc.sql("""
                         SELECT COUNT(*) AS total_tasks,
-                               SUM(CASE WHEN status = 'DONE' THEN 1 ELSE 0 END) AS completed_tasks,
-                               COALESCE(SUM(CASE WHEN status = 'DONE' THEN actual_seconds ELSE 0 END), 0)
+                               SUM(CASE WHEN item.status = 'DONE' THEN 1 ELSE 0 END) AS completed_tasks,
+                               COALESCE(SUM(CASE WHEN item.status = 'DONE' THEN item.actual_seconds ELSE 0 END), 0)
                                    AS focused_seconds
-                        FROM homework_tasks
-                        WHERE child_id = :childId
-                          AND created_at >= :weekStart
-                          AND created_at < :weekEnd
+                        FROM plan_items item
+                        JOIN plans plan ON plan.id = item.plan_id
+                        WHERE plan.child_id = :childId
+                          AND plan.plan_date >= :weekStart
+                          AND plan.plan_date < :weekEnd
+                          AND item.kind = 'HOMEWORK'
                         """)
                 .param("childId", childId)
                 .param("weekStart", weekStart)
@@ -79,11 +98,13 @@ public class GrowthRepository {
                                COUNT(*) AS completed_tasks,
                                ROUND(AVG(estimated_minutes)) AS average_estimated_minutes,
                                ROUND(AVG(actual_seconds) / 60.0) AS average_actual_minutes
-                        FROM homework_tasks
-                        WHERE child_id = :childId
-                          AND status = 'DONE'
-                          AND created_at >= :weekStart
-                          AND created_at < :weekEnd
+                        FROM plan_items item
+                        JOIN plans plan ON plan.id = item.plan_id
+                        WHERE plan.child_id = :childId
+                          AND item.kind = 'HOMEWORK'
+                          AND item.status = 'DONE'
+                          AND plan.plan_date >= :weekStart
+                          AND plan.plan_date < :weekEnd
                         GROUP BY subject
                         ORDER BY completed_tasks DESC, subject
                         """)
@@ -94,6 +115,44 @@ public class GrowthRepository {
                         rs.getString("subject"), rs.getInt("completed_tasks"),
                         rs.getInt("average_estimated_minutes"), rs.getInt("average_actual_minutes")))
                 .list();
+    }
+
+    public List<DailyProgressView> dailyProgress(
+            String childId,
+            LocalDate weekStart,
+            LocalDate weekEndExclusive) {
+        Map<LocalDate, int[]> totals = jdbc.sql("""
+                        SELECT plan.plan_date,
+                               COUNT(*) AS total_tasks,
+                               SUM(CASE WHEN item.status = 'DONE' THEN 1 ELSE 0 END) AS completed_tasks,
+                               COALESCE(SUM(CASE WHEN item.status = 'DONE' THEN item.actual_seconds ELSE 0 END), 0)
+                                   AS focused_seconds
+                        FROM plans plan
+                        JOIN plan_items item ON item.plan_id = plan.id AND item.kind = 'HOMEWORK'
+                        WHERE plan.child_id = :childId
+                          AND plan.plan_date >= :weekStart
+                          AND plan.plan_date < :weekEnd
+                        GROUP BY plan.plan_date
+                        """)
+                .param("childId", childId)
+                .param("weekStart", weekStart)
+                .param("weekEnd", weekEndExclusive)
+                .query((rs, rowNum) -> Map.entry(
+                        rs.getDate("plan_date").toLocalDate(),
+                        new int[]{rs.getInt("total_tasks"), rs.getInt("completed_tasks"),
+                                rs.getInt("focused_seconds")}))
+                .list()
+                .stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        String[] labels = {"周一", "周二", "周三", "周四", "周五", "周六", "周日"};
+        return weekStart.datesUntil(weekEndExclusive)
+                .map(date -> {
+                    int[] day = totals.getOrDefault(date, new int[]{0, 0, 0});
+                    int rate = day[0] == 0 ? 0 : Math.round(day[1] * 100f / day[0]);
+                    return new DailyProgressView(date.toString(), labels[date.getDayOfWeek().getValue() - 1],
+                            day[1], day[0], rate, Math.round(day[2] / 60f));
+                })
+                .toList();
     }
 
     public int lifetimeCompletedTasks(String childId) {
@@ -108,14 +167,122 @@ public class GrowthRepository {
 
     public List<LocalDate> completionDates(String childId) {
         return jdbc.sql("""
-                        SELECT DISTINCT DATE(created_at) AS completion_date
-                        FROM activity_log
-                        WHERE child_id = :childId AND action_type = 'TASK_COMPLETED'
-                        ORDER BY completion_date DESC
+                        SELECT plan.plan_date AS completion_date
+                        FROM plans plan
+                        JOIN plan_items item ON item.plan_id = plan.id AND item.kind = 'HOMEWORK'
+                        WHERE plan.child_id = :childId AND plan.plan_date <= CURRENT_DATE
+                        GROUP BY plan.id, plan.plan_date
+                        HAVING COUNT(*) > 0
+                           AND SUM(CASE WHEN item.status = 'DONE' THEN 1 ELSE 0 END) = COUNT(*)
+                        ORDER BY plan.plan_date DESC
                         """)
                 .param("childId", childId)
                 .query((rs, rowNum) -> rs.getDate("completion_date").toLocalDate())
                 .list();
+    }
+
+    public Map<String, LocalDateTime> unlockedBadges(String childId) {
+        return jdbc.sql("""
+                        SELECT badge_code, unlocked_at
+                        FROM child_badges
+                        WHERE child_id = :childId
+                        """)
+                .param("childId", childId)
+                .query((rs, rowNum) -> Map.entry(
+                        rs.getString("badge_code"), rs.getTimestamp("unlocked_at").toLocalDateTime()))
+                .list().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+    public boolean unlockBadge(String childId, String badgeCode) {
+        return jdbc.sql("""
+                        INSERT IGNORE INTO child_badges (id, child_id, badge_code)
+                        VALUES (:id, :childId, :badgeCode)
+                        """)
+                .param("id", UUID.randomUUID().toString())
+                .param("childId", childId)
+                .param("badgeCode", badgeCode)
+                .update() == 1;
+    }
+
+    public Optional<WeeklyGoalRow> weeklyGoal(String childId, LocalDate weekStart) {
+        return jdbc.sql("""
+                        SELECT id, child_id, week_start, target_tasks, target_focus_minutes,
+                               bonus_stars, status, claimed_at
+                        FROM weekly_goals
+                        WHERE child_id = :childId AND week_start = :weekStart
+                        """)
+                .param("childId", childId)
+                .param("weekStart", weekStart)
+                .query((rs, rowNum) -> new WeeklyGoalRow(
+                        rs.getString("id"), rs.getString("child_id"),
+                        rs.getDate("week_start").toLocalDate(), rs.getInt("target_tasks"),
+                        rs.getInt("target_focus_minutes"), rs.getInt("bonus_stars"),
+                        rs.getString("status"), rs.getTimestamp("claimed_at") == null
+                                ? null : rs.getTimestamp("claimed_at").toLocalDateTime()))
+                .optional();
+    }
+
+    public WeeklyGoalRow requireWeeklyGoalForUpdate(String childId, LocalDate weekStart) {
+        return jdbc.sql("""
+                        SELECT id, child_id, week_start, target_tasks, target_focus_minutes,
+                               bonus_stars, status, claimed_at
+                        FROM weekly_goals
+                        WHERE child_id = :childId AND week_start = :weekStart
+                        FOR UPDATE
+                        """)
+                .param("childId", childId)
+                .param("weekStart", weekStart)
+                .query((rs, rowNum) -> new WeeklyGoalRow(
+                        rs.getString("id"), rs.getString("child_id"),
+                        rs.getDate("week_start").toLocalDate(), rs.getInt("target_tasks"),
+                        rs.getInt("target_focus_minutes"), rs.getInt("bonus_stars"),
+                        rs.getString("status"), rs.getTimestamp("claimed_at") == null
+                                ? null : rs.getTimestamp("claimed_at").toLocalDateTime()))
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException("本周还没有设置成长目标"));
+    }
+
+    public void upsertWeeklyGoal(
+            String id,
+            String familyId,
+            String childId,
+            LocalDate weekStart,
+            int targetTasks,
+            int targetFocusMinutes,
+            int bonusStars,
+            String actorId) {
+        jdbc.sql("""
+                        INSERT INTO weekly_goals
+                            (id, family_id, child_id, week_start, target_tasks, target_focus_minutes,
+                             bonus_stars, status, created_by)
+                        VALUES (:id, :familyId, :childId, :weekStart, :targetTasks, :targetFocusMinutes,
+                                :bonusStars, 'ACTIVE', :actorId)
+                        ON DUPLICATE KEY UPDATE
+                            target_tasks = VALUES(target_tasks),
+                            target_focus_minutes = VALUES(target_focus_minutes),
+                            bonus_stars = VALUES(bonus_stars),
+                            updated_at = CURRENT_TIMESTAMP(6)
+                        """)
+                .param("id", id)
+                .param("familyId", familyId)
+                .param("childId", childId)
+                .param("weekStart", weekStart)
+                .param("targetTasks", targetTasks)
+                .param("targetFocusMinutes", targetFocusMinutes)
+                .param("bonusStars", bonusStars)
+                .param("actorId", actorId)
+                .update();
+    }
+
+    public void claimWeeklyGoal(String goalId, String actorId) {
+        jdbc.sql("""
+                        UPDATE weekly_goals
+                        SET status = 'CLAIMED', claimed_by = :actorId, claimed_at = CURRENT_TIMESTAMP(6)
+                        WHERE id = :id AND status = 'ACTIVE'
+                        """)
+                .param("actorId", actorId)
+                .param("id", goalId)
+                .update();
     }
 
     public List<WeeklyCommentView> weeklyComments(String childId, LocalDate weekStart) {
@@ -164,9 +331,17 @@ public class GrowthRepository {
         return jdbc.sql("""
                         SELECT reward.id, reward.name, reward.icon, reward.required_stars,
                                reward.category, reward.source_type, creator.display_name AS created_by_name,
-                               redemption.id AS redemption_id, redemption.status AS redemption_status
+                               redemption.id AS redemption_id, redemption.status AS redemption_status,
+                               EXISTS(
+                                   SELECT 1 FROM reward_redemptions owned_redemption
+                                   WHERE owned_redemption.reward_id = reward.id
+                                     AND owned_redemption.child_id = :childId
+                                     AND owned_redemption.status = 'APPROVED'
+                               ) AS owned,
+                               child.equipped_skin_reward_id = reward.id AS equipped
                         FROM reward_definitions reward
                         JOIN members creator ON creator.id = reward.created_by
+                        JOIN children child ON child.id = :childId
                         LEFT JOIN reward_redemptions redemption
                           ON redemption.id = (
                               SELECT latest.id
@@ -183,14 +358,89 @@ public class GrowthRepository {
                 .query((rs, rowNum) -> {
                     String redemptionStatus = rs.getString("redemption_status");
                     boolean pending = "REQUESTED".equals(redemptionStatus);
+                    boolean owned = rs.getBoolean("owned");
+                    boolean skinOwned = "SKIN".equals(rs.getString("category")) && owned;
                     return new RewardView(
                             rs.getString("id"), rs.getString("name"), rs.getString("icon"),
                             rs.getInt("required_stars"), rs.getString("category"),
                             rs.getString("source_type"), rs.getString("created_by_name"),
-                            childStars >= rs.getInt("required_stars") && !pending,
+                            childStars >= rs.getInt("required_stars") && !pending && !skinOwned,
+                            owned, rs.getBoolean("equipped"),
                             rs.getString("redemption_id"), redemptionStatus);
                 })
                 .list();
+    }
+
+    public List<RewardRedemptionView> redemptions(String childId) {
+        return jdbc.sql("""
+                        SELECT redemption.id, reward.id AS reward_id, reward.name, reward.icon,
+                               reward.required_stars, redemption.status,
+                               requester.display_name AS requested_by_name,
+                               reviewer.display_name AS reviewed_by_name,
+                               redemption.requested_at, redemption.reviewed_at
+                        FROM reward_redemptions redemption
+                        JOIN reward_definitions reward ON reward.id = redemption.reward_id
+                        JOIN members requester ON requester.id = redemption.requested_by
+                        LEFT JOIN members reviewer ON reviewer.id = redemption.reviewed_by
+                        WHERE redemption.child_id = :childId
+                        ORDER BY redemption.requested_at DESC
+                        LIMIT 30
+                        """)
+                .param("childId", childId)
+                .query((rs, rowNum) -> new RewardRedemptionView(
+                        rs.getString("id"), rs.getString("reward_id"), rs.getString("name"),
+                        rs.getString("icon"), rs.getInt("required_stars"), rs.getString("status"),
+                        rs.getString("requested_by_name"), rs.getString("reviewed_by_name"),
+                        rs.getTimestamp("requested_at").toLocalDateTime().format(DATE_TIME),
+                        rs.getTimestamp("reviewed_at") == null ? null
+                                : rs.getTimestamp("reviewed_at").toLocalDateTime().format(DATE_TIME)))
+                .list();
+    }
+
+    public List<StarTransactionView> starTransactions(String childId) {
+        return jdbc.sql("""
+                        SELECT id, amount, reason, created_at
+                        FROM star_transactions
+                        WHERE child_id = :childId
+                        ORDER BY created_at DESC
+                        LIMIT 30
+                        """)
+                .param("childId", childId)
+                .query((rs, rowNum) -> new StarTransactionView(
+                        rs.getString("id"), rs.getInt("amount"), rs.getString("reason"),
+                        rs.getTimestamp("created_at").toLocalDateTime().format(DATE_TIME)))
+                .list();
+    }
+
+    public String equippedSkinRewardId(String childId) {
+        return jdbc.sql("SELECT equipped_skin_reward_id FROM children WHERE id = :childId")
+                .param("childId", childId)
+                .query(String.class)
+                .optional()
+                .orElse(null);
+    }
+
+    public boolean ownsApprovedSkin(String childId, String rewardId) {
+        return jdbc.sql("""
+                        SELECT COUNT(*)
+                        FROM reward_redemptions redemption
+                        JOIN reward_definitions reward ON reward.id = redemption.reward_id
+                        WHERE redemption.child_id = :childId
+                          AND reward.id = :rewardId
+                          AND reward.category = 'SKIN'
+                          AND redemption.status = 'APPROVED'
+                        """)
+                .param("childId", childId)
+                .param("rewardId", rewardId)
+                .query(Integer.class)
+                .single() > 0;
+    }
+
+    public void equipSkin(String childId, String rewardId) {
+        jdbc.sql("UPDATE children SET equipped_skin_reward_id = :rewardId WHERE id = :childId")
+                .param("rewardId", rewardId)
+                .param("childId", childId)
+                .update();
     }
 
     public void insertReward(
