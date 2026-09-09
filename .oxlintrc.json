@@ -23,11 +23,15 @@
     "typeCheck": true
   },
   "ignorePatterns": [
+    "**/node_modules/**",
     ".next/**",
     ".vinext/**",
+    ".wrangler/**",
     "out/**",
     "build/**",
-    "dist/**",
+    "**/dist/**",
+    "**/dist-h5/**",
+    "**/.temp/**",
     "coverage/**",
     "components/ui/**",
     "next-env.d.ts"

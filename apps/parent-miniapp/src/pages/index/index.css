@@ -1,0 +1,43 @@
+.page { min-height: 100vh; padding: 18px 16px 48px; box-sizing: border-box; }
+.hero { display: flex; align-items: center; justify-content: space-between; padding: 22px; border-radius: 26px; background: linear-gradient(135deg, #dcf4e9, #fff0d9); box-shadow: 0 10px 30px rgba(55, 109, 91, .1); }
+.brand { display: block; color: #4b8b77; font-size: 14px; font-weight: 700; letter-spacing: 1px; }
+.heroTitle { display: block; margin-top: 7px; color: #24443c; font-size: 26px; font-weight: 800; }
+.subtitle { display: block; margin-top: 7px; color: #687d76; font-size: 15px; }
+.didi { width: 88px; height: 88px; }
+.notice { margin: 14px 3px; padding: 12px 16px; border-radius: 16px; color: #4b7468; background: #e8f6ef; font-size: 14px; }
+.childTabs { display: flex; gap: 10px; margin-bottom: 16px; }
+.childTab { display: flex; align-items: center; flex: 1; gap: 9px; margin: 0; padding: 10px 12px; border-radius: 18px; color: #60766f; background: #fff; line-height: 1.2; text-align: left; }
+.childTab.active { color: #245848; background: #dff5e9; box-shadow: inset 0 0 0 2px #64c4a5; }
+.avatar { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 13px; color: white; background: #62bd9e; font-size: 17px; font-weight: 800; line-height: 36px; text-align: center; }
+.childName, .childGrade { display: block; }
+.childName { font-size: 15px; font-weight: 800; }
+.childGrade { margin-top: 3px; font-size: 12px; }
+.card { margin-top: 16px; padding: 19px; border-radius: 24px; background: #fff; box-shadow: 0 9px 28px rgba(56, 101, 87, .07); }
+.cardHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.step { display: block; margin-bottom: 5px; color: #4a8e78; font-size: 13px; font-weight: 750; }
+.cardTitle { display: block; color: #243f38; font-size: 20px; font-weight: 800; }
+.statusPill, .pendingPill, .readyPill { padding: 5px 9px; border-radius: 99px; color: #99601f; background: #fff0d8; font-size: 12px; }
+.pendingPill { color: #a25e1e; background: #fff0d5; }
+.readyPill { color: #2f7a64; background: #e0f5eb; }
+.photoPlaceholder { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 150px; border: 1px dashed #afd1c4; border-radius: 20px; color: #71847e; background: #f7fbf8; font-size: 15px; }
+.photoIcon { margin-bottom: 8px; font-size: 34px; }
+.preview { width: 100%; height: 170px; border-radius: 20px; }
+.buttonRow { display: flex; gap: 10px; margin-top: 14px; }
+.secondaryButton, .primaryButton, .confirmButton { flex: 1; margin: 0; border-radius: 16px; font-size: 15px; font-weight: 750; }
+.secondaryButton { color: #397a66; background: #edf7f2; }
+.primaryButton, .confirmButton { color: #fff; background: #54b996; }
+.recognizedList { display: grid; gap: 9px; }
+.recognizedItem, .planItem { display: flex; align-items: center; gap: 10px; padding: 12px 10px; border-radius: 17px; background: #f8fbf9; }
+.taskEmoji { flex: 0 0 34px; font-size: 24px; text-align: center; }
+.taskText { flex: 1; min-width: 0; }
+.taskSubject, .taskTitle { display: block; }
+.taskSubject { margin-top: 3px; color: #70817c; font-size: 12px; }
+.taskTitle { overflow: hidden; color: #2a463e; font-size: 15px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+.minutes, .itemStatus { color: #4d7a6c; font-size: 12px; }
+.startRow { display: flex; align-items: center; justify-content: space-between; margin: 15px 2px 12px; color: #5b706a; font-size: 14px; }
+.timeInput { width: 80px; padding: 8px 10px; border-radius: 12px; background: #edf7f2; font-size: 16px; font-weight: 750; text-align: center; }
+.confirmButton { width: 100%; margin-top: 10px; }
+.planCard { margin-bottom: 30px; }
+.planItem { margin-top: 9px; }
+.planItem.done { opacity: .55; }
+.planTime { flex: 0 0 42px; color: #355e52; font-size: 15px; font-weight: 800; }

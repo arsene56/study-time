@@ -7,6 +7,11 @@
   },
   "scripts": {
     "dev": "vinext dev",
+    "build:shared": "pnpm --filter @study-time/shared build",
+    "dev:child": "pnpm build:shared && pnpm --filter @study-time/child-pwa dev",
+    "dev:parent": "pnpm build:shared && pnpm --filter @study-time/parent-miniapp dev:h5",
+    "build:child": "pnpm build:shared && pnpm --filter @study-time/child-pwa build",
+    "build:parent": "pnpm build:shared && pnpm --filter @study-time/parent-miniapp build:weapp",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint",
