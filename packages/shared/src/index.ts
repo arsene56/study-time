@@ -22,10 +22,16 @@ export type RecognizedTask = {
   taskType: string;
   icon: string;
   estimatedMinutes: number;
-  estimateSource: 'GRADE_DEFAULT' | 'HISTORY';
+  baseEstimatedMinutes: number;
+  estimateSource: 'GRADE_DEFAULT' | 'PERSONAL_HISTORY' | 'SUBJECT_HISTORY' | 'MANUAL_OVERRIDE';
+  estimateSampleSize: number;
+  estimateConfidence: 'LOW' | 'MEDIUM' | 'HIGH';
+  estimateReason: string;
   difficulty: 'EASY' | 'MODERATE' | 'CHALLENGE';
   eyeLoad: 'LOW' | 'HIGH';
-  confidence: 'LOW' | 'HIGH';
+  confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+  ocrConfidence: number | null;
+  manuallyEdited: boolean;
   status: string;
 };
 
@@ -35,7 +41,40 @@ export type HomeworkBatch = {
   status: string;
   recognitionMode: string;
   sourceObjectKey: string | null;
+  ocrProvider: string | null;
+  ocrRequestId: string | null;
+  ocrRawText: string | null;
+  ocrAverageConfidence: number | null;
+  recognitionError: string | null;
+  recognizedAt: string | null;
   tasks: RecognizedTask[];
+};
+
+export type RecognitionCapability = {
+  configuredProvider: string;
+  providerLabel: string;
+  realOcrAvailable: boolean;
+  message: string;
+};
+
+export type SubjectPersonalization = {
+  subject: string;
+  sampleSize: number;
+  averageEstimatedMinutes: number;
+  averageActualMinutes: number;
+  pacePercent: number;
+  trend: string;
+  suggestion: string;
+};
+
+export type PersonalizationProfile = {
+  childId: string;
+  totalSamples: number;
+  level: 'STARTING' | 'LEARNING' | 'STABLE';
+  confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+  overallPacePercent: number;
+  summary: string;
+  subjects: SubjectPersonalization[];
 };
 
 export type PlanItem = {

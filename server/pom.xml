@@ -30,6 +30,7 @@
 		<java.version>21</java.version>
 		<minio.version>9.0.3</minio.version>
 		<okhttp.version>5.3.2</okhttp.version>
+		<tencent.ocr.version>3.2.25</tencent.ocr.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -68,6 +69,11 @@
 			<groupId>io.minio</groupId>
 			<artifactId>minio</artifactId>
 			<version>${minio.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.tencentcloudapi</groupId>
+			<artifactId>tencentcloud-sdk-java-ocr</artifactId>
+			<version>${tencent.ocr.version}</version>
 		</dependency>
 		<!-- MinIO 9 publishes a multiplatform OkHttp marker; Maven needs the JVM artifact explicitly. -->
 		<dependency>

@@ -31,10 +31,16 @@ public final class ApiModels {
             String taskType,
             String icon,
             int estimatedMinutes,
+            int baseEstimatedMinutes,
             String estimateSource,
+            int estimateSampleSize,
+            String estimateConfidence,
+            String estimateReason,
             String difficulty,
             String eyeLoad,
             String confidence,
+            Double ocrConfidence,
+            boolean manuallyEdited,
             String status) {
     }
 
@@ -44,7 +50,49 @@ public final class ApiModels {
             String status,
             String recognitionMode,
             String sourceObjectKey,
+            String ocrProvider,
+            String ocrRequestId,
+            String ocrRawText,
+            Double ocrAverageConfidence,
+            String recognitionError,
+            String recognizedAt,
             List<RecognizedTaskView> tasks) {
+    }
+
+    public record RecognitionCapabilityView(
+            String configuredProvider,
+            String providerLabel,
+            boolean realOcrAvailable,
+            String message) {
+    }
+
+    public record SubjectPersonalizationView(
+            String subject,
+            int sampleSize,
+            int averageEstimatedMinutes,
+            int averageActualMinutes,
+            int pacePercent,
+            String trend,
+            String suggestion) {
+    }
+
+    public record PersonalizationProfileView(
+            String childId,
+            int totalSamples,
+            String level,
+            String confidence,
+            int overallPacePercent,
+            String summary,
+            List<SubjectPersonalizationView> subjects) {
+    }
+
+    public record SaveHomeworkTaskRequest(
+            @NotBlank @Size(max = 30) String subject,
+            @NotBlank @Size(max = 160) String title,
+            @NotBlank @Size(max = 30) String taskType,
+            @Min(1) int estimatedMinutes,
+            @NotBlank String difficulty,
+            @NotBlank String eyeLoad) {
     }
 
     public record CreatePlanRequest(@NotBlank String startTime) {

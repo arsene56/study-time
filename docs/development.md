@@ -28,14 +28,22 @@
 5. 家长和孩子均可查看奖励申请历史与星星账本，明确每一笔获得和消耗的原因。
 6. 周目标调整、周奖励领取、奖励审批和皮肤装备均进入家庭协作记录，并通过 WebSocket 通知另一端刷新。
 
-真实微信授权仍属于阶段 1，真实 OCR/AI 与固定/临时作息管理继续留在后续阶段。
+阶段 6 已在上述闭环上加入真实 OCR 与个性化能力：
+
+1. `POST /homework-batches/recognize` 保存原图后调用可替换 OCR Provider；首个实现为腾讯云高精度通用文字识别。
+2. OCR 文本按学科、编号和分隔符拆分，推断任务类型、难度、用眼负荷与年级基准耗时；置信度和原始文本均保留供家长核对。
+3. 云服务未配置、调用失败或无法拆分时，批次进入 `NEEDS_MANUAL_ENTRY`，仍可人工添加、修订或删除任务后生成计划。
+4. 个性化估时采用最近 180 天同类任务优先、学科历史兜底的时间衰减加权，并把单次实际用时限制在基准的 0.5～2 倍范围，降低异常计时的影响。
+5. 家长端新增孩子时间曲线，展示有效样本量、可信度、相对年级节奏和分学科建议；不同孩子的数据不会混用。
+
+真实微信授权仍属于阶段 1，固定/临时作息管理继续留在后续阶段。
 
 ## 数据职责
 
 | 数据 | 当前存储 | 后续演进 |
 | --- | --- | --- |
 | 家庭、成员、孩子 | MySQL | 接入微信身份及家庭邀请关系 |
-| 作业批次、拆分任务、计划、完成记录 | MySQL | 已包含历史耗时来源、计划版本和调整审计 |
+| 作业批次、OCR 元数据、拆分任务、计划、完成记录 | MySQL | 已包含原文/置信度、个性化估时来源、计划版本和调整审计 |
 | 周报点评、每日趋势、周目标与结算 | MySQL | 后续加入学期维度和可配置统计周期 |
 | 徽章、奖励定义、兑换审批、皮肤装备、星星流水 | MySQL | 后续加入奖励有效期和主题资源包 |
 | 作业原图 | MinIO | 云上替换为兼容 S3 的对象存储 |
@@ -48,6 +56,10 @@
 
 - `GET /demo/context`：读取本地演示家庭和孩子。
 - `POST /homework-batches/mock-recognize?childId=...`：上传可选图片并生成模拟识别结果。
+- `GET /recognition-capabilities`：读取当前 OCR Provider 与真实识别可用状态。
+- `POST /homework-batches/recognize?childId=...`：上传图片并执行真实 OCR；失败时返回可人工处理的批次。
+- `POST /homework-batches/{batchId}/tasks`：为待确认批次人工补录作业项。
+- `PUT /homework-tasks/{taskId}` / `DELETE /homework-tasks/{taskId}`：修订或删除待确认作业项。
 - `POST /homework-batches/{batchId}/confirm-and-plan`：确认并生成计划。
 - `GET /children/{childId}/today-plan`：读取当天计划。
 - `POST /plan-items/{itemId}/start`：开始任务并记录计时起点。
@@ -55,6 +67,7 @@
 - `POST /plan-items/{itemId}/overrun-decision`：选择暂时跳过或继续挑战，并动态重排。
 - `POST /plans/{planId}/reorder`：家长或孩子提交完整任务顺序。
 - `GET /children/{childId}/activities`：查看操作记录。
+- `GET /children/{childId}/personalization-profile`：读取孩子独立的近期估时画像。
 - `GET /children/{childId}/weekly-report`：读取本周成长数据、徽章与点评。
 - `GET /children/{childId}/weekly-report?weekStart=...`：读取指定自然周的趋势与上周对比。
 - `POST /children/{childId}/weekly-comments`：添加家庭鼓励或孩子自评。

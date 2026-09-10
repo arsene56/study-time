@@ -12,7 +12,7 @@
 .childName, .childGrade { display: block; }
 .childName { font-size: 15px; font-weight: 800; }
 .childGrade { margin-top: 3px; font-size: 12px; }
-.mainTabs { position: sticky; top: 8px; z-index: 5; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 16px; padding: 6px; border-radius: 18px; background: rgba(255,255,255,.94); box-shadow: 0 8px 24px rgba(56,101,87,.09); }
+.mainTabs { position: sticky; top: 8px; z-index: 5; display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-bottom: 16px; padding: 6px; border-radius: 18px; background: rgba(255,255,255,.94); box-shadow: 0 8px 24px rgba(56,101,87,.09); }
 .mainTabs button { margin: 0; padding: 8px 4px; border-radius: 13px; color: #6d817a; background: transparent; font-size: 13px; font-weight: 750; line-height: 1.4; }
 .mainTabs button.active { color: #255b4a; background: #dff5e9; }
 .card { margin-top: 16px; padding: 19px; border-radius: 24px; background: #fff; box-shadow: 0 9px 28px rgba(56, 101, 87, .07); }
@@ -20,16 +20,39 @@
 .step { display: block; margin-bottom: 5px; color: #4a8e78; font-size: 13px; font-weight: 750; }
 .cardTitle { display: block; color: #243f38; font-size: 20px; font-weight: 800; }
 .statusPill, .pendingPill, .readyPill { padding: 5px 9px; border-radius: 99px; color: #99601f; background: #fff0d8; font-size: 12px; }
+.statusPill.ocrReady { color: #287159; background: #dff3ea; }
 .pendingPill { color: #a25e1e; background: #fff0d5; }
 .readyPill { color: #2f7a64; background: #e0f5eb; }
 .photoPlaceholder { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 150px; border: 1px dashed #afd1c4; border-radius: 20px; color: #71847e; background: #f7fbf8; font-size: 15px; }
 .photoIcon { margin-bottom: 8px; font-size: 34px; }
 .preview { width: 100%; height: 170px; border-radius: 20px; }
+.capability { display: grid; gap: 4px; margin: -4px 0 13px; padding: 10px 12px; border-radius: 14px; color: #657b74; background: #f2f8f5; font-size: 11px; line-height: 1.45; }
+.capability text:first-child { color: #377963; font-weight: 750; }
 .buttonRow { display: flex; gap: 10px; margin-top: 14px; }
 .secondaryButton, .primaryButton, .confirmButton { flex: 1; margin: 0; border-radius: 16px; font-size: 15px; font-weight: 750; }
 .secondaryButton { color: #397a66; background: #edf7f2; }
 .primaryButton, .confirmButton { color: #fff; background: #54b996; }
 .recognizedList { display: grid; gap: 9px; }
+.ocrMeta { display: grid; gap: 6px; margin-bottom: 12px; padding: 11px 12px; border-radius: 15px; color: #637872; background: #f4f8f6; font-size: 11px; line-height: 1.5; }
+.ocrError { color: #9a5f25; }
+.ocrText { max-height: 72px; overflow: hidden; color: #7b8b86; white-space: pre-wrap; }
+.recognizedEditor { padding: 13px; border: 1px solid #e4efea; border-radius: 18px; background: #fbfdfc; }
+.editorHead { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+.editorHead > view { flex: 1; display: grid; gap: 3px; }
+.estimateTitle { color: #356f5d; font-size: 12px; font-weight: 800; }
+.estimateReason { color: #7a8a85; font-size: 10px; line-height: 1.35; }
+.confidence { padding: 3px 7px; border-radius: 99px; color: #36745f; background: #e3f4ed; font-size: 10px; }
+.confidence-low { color: #986225; background: #fff0d9; }
+.editGrid, .manualTaskForm { display: grid; grid-template-columns: 1fr 1fr 72px; gap: 7px; }
+.editGrid input, .manualTaskForm input { min-width: 0; padding: 8px 9px; border-radius: 11px; color: #29483f; background: #edf6f2; font-size: 12px; }
+.editGrid .wideInput, .manualTaskForm .wideInput { grid-column: 1 / 3; }
+.choiceRow { display: flex; align-items: center; gap: 5px; margin-top: 9px; color: #6d8079; font-size: 10px; }
+.choiceRow button { flex: 1; min-width: 0; margin: 0; padding: 0 4px; border-radius: 9px; color: #668079; background: #eff5f2; font-size: 10px; line-height: 28px; }
+.choiceRow button.selected { color: #fff; background: #58b796; }
+.editorActions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 9px; }
+.editorActions button { margin: 0; padding: 0 11px; border-radius: 10px; color: #32745f; background: #e4f4ed; font-size: 10px; line-height: 31px; }
+.editorActions button:last-child { color: #95613a; background: #f7eee6; }
+.manualTaskForm button { grid-column: 1 / -1; margin: 0; border-radius: 11px; color: #34745f; background: #e4f4ed; font-size: 12px; line-height: 36px; }
 .recognizedItem, .planItem { display: flex; align-items: center; gap: 10px; padding: 12px 10px; border-radius: 17px; background: #f8fbf9; }
 .taskEmoji { flex: 0 0 34px; font-size: 24px; text-align: center; }
 .taskText { flex: 1; min-width: 0; }
@@ -112,3 +135,19 @@
 .historyIcon { font-size: 22px; text-align: center; } .historyTitle { color: #304a42; font-size: 12px; font-weight: 750; } .historyMeta { color: #82918c; font-size: 9px; }
 .historyStatus, .starPlus, .starMinus { padding: 3px 7px; border-radius: 99px; color: #7a674e; background: #f2eadf; font-size: 9px; font-weight: 750; }
 .historyStatus.status-approved, .starPlus { color: #2b755d; background: #def3e9; } .historyStatus.status-requested { color: #976023; background: #fff0d8; } .starMinus { color: #96602a; background: #fff0df; }
+.profileLevel { padding: 5px 9px; border-radius: 99px; color: #986125; background: #fff0d9; font-size: 11px; }
+.profileLevel.level-stable { color: #287159; background: #dff3ea; }
+.profileHero { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; }
+.profileHero > view { display: grid; justify-items: center; gap: 5px; padding: 14px 5px; border-radius: 16px; background: #edf8f3; }
+.profileHero text:first-child { color: #2c6655; font-size: 20px; font-weight: 850; }
+.profileHero text:last-child { color: #72847e; font-size: 9px; }
+.profileSubjects { display: grid; gap: 9px; }
+.profileSubjects > view { padding: 12px; border-radius: 16px; background: #f8fbf9; }
+.profileSubjectHead { display: flex; justify-content: space-between; color: #355c50; font-size: 13px; font-weight: 800; }
+.profileSubjectHead text:last-child { color: #7b8c86; font-size: 10px; font-weight: 500; }
+.paceTrack { height: 6px; margin: 9px 0; overflow: hidden; border-radius: 99px; background: #dcebe5; }
+.paceTrack view { height: 100%; border-radius: inherit; background: linear-gradient(90deg,#72c6aa,#f0be6c); }
+.profileTrend, .profileSuggestion { display: block; color: #667b74; font-size: 10px; line-height: 1.5; }
+.profileSuggestion { margin-top: 3px; color: #3f806b; font-weight: 700; }
+.emptyProfile, .privacyNote { padding: 13px; border-radius: 15px; color: #6b7f78; background: #f5f9f7; font-size: 11px; line-height: 1.55; }
+.privacyNote { margin-top: 14px; }

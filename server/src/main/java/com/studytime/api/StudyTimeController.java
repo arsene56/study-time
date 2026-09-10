@@ -12,11 +12,14 @@ import com.studytime.api.ApiModels.EquipSkinRequest;
 import com.studytime.api.ApiModels.HomeworkBatchView;
 import com.studytime.api.ApiModels.OverrunDecisionRequest;
 import com.studytime.api.ApiModels.PlanView;
+import com.studytime.api.ApiModels.PersonalizationProfileView;
+import com.studytime.api.ApiModels.RecognitionCapabilityView;
 import com.studytime.api.ApiModels.RedeemRewardRequest;
 import com.studytime.api.ApiModels.ReorderPlanRequest;
 import com.studytime.api.ApiModels.ReviewRewardRequest;
 import com.studytime.api.ApiModels.RewardStoreView;
 import com.studytime.api.ApiModels.SaveWeeklyGoalRequest;
+import com.studytime.api.ApiModels.SaveHomeworkTaskRequest;
 import com.studytime.api.ApiModels.WeeklyReportView;
 import com.studytime.domain.StudyTimeRepository;
 import com.studytime.growth.GrowthService;
@@ -25,8 +28,10 @@ import com.studytime.homework.PlanExecutionService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -69,6 +74,39 @@ public class StudyTimeController {
         return homeworkService.mockRecognize(childId, file);
     }
 
+    @GetMapping("/recognition-capabilities")
+    public RecognitionCapabilityView recognitionCapabilities() {
+        return homeworkService.recognitionCapability();
+    }
+
+    @PostMapping("/homework-batches/recognize")
+    @org.springframework.web.bind.annotation.ResponseStatus(HttpStatus.CREATED)
+    public HomeworkBatchView recognize(
+            @RequestParam String childId,
+            @RequestParam MultipartFile file) {
+        return homeworkService.recognize(childId, file);
+    }
+
+    @PostMapping("/homework-batches/{batchId}/tasks")
+    @org.springframework.web.bind.annotation.ResponseStatus(HttpStatus.CREATED)
+    public HomeworkBatchView addHomeworkTask(
+            @PathVariable String batchId,
+            @Valid @RequestBody SaveHomeworkTaskRequest request) {
+        return homeworkService.addTask(batchId, request);
+    }
+
+    @PutMapping("/homework-tasks/{taskId}")
+    public HomeworkBatchView updateHomeworkTask(
+            @PathVariable String taskId,
+            @Valid @RequestBody SaveHomeworkTaskRequest request) {
+        return homeworkService.updateTask(taskId, request);
+    }
+
+    @DeleteMapping("/homework-tasks/{taskId}")
+    public HomeworkBatchView deleteHomeworkTask(@PathVariable String taskId) {
+        return homeworkService.deleteTask(taskId);
+    }
+
     @PostMapping("/homework-batches/{batchId}/confirm-and-plan")
     public PlanView confirmAndPlan(
             @PathVariable String batchId,
@@ -79,6 +117,11 @@ public class StudyTimeController {
     @GetMapping("/children/{childId}/today-plan")
     public PlanView todayPlan(@PathVariable String childId) {
         return homeworkService.todayPlan(childId);
+    }
+
+    @GetMapping("/children/{childId}/personalization-profile")
+    public PersonalizationProfileView personalizationProfile(@PathVariable String childId) {
+        return homeworkService.personalizationProfile(childId);
     }
 
     @GetMapping("/children/{childId}/activities")

@@ -43,12 +43,29 @@ public class StudyTimeRepository {
             String taskType,
             String icon,
             int estimatedMinutes,
+            int baseEstimatedMinutes,
             String estimateSource,
+            int estimateSampleSize,
+            String estimateConfidence,
+            String estimateReason,
             String difficulty,
             String eyeLoad,
             String confidence,
+            Double ocrConfidence,
+            boolean manuallyEdited,
             String status,
             int sortOrder) {
+    }
+
+    public record BatchRow(String id, String familyId, String childId, String status) {
+    }
+
+    public record HistorySample(
+            String subject,
+            String taskType,
+            int estimatedMinutes,
+            int actualSeconds,
+            LocalDateTime completedAt) {
     }
 
     public record PlanItemRow(
@@ -82,9 +99,6 @@ public class StudyTimeRepository {
             int version) {
     }
 
-    public record EstimateRow(int minutes, int sampleSize) {
-    }
-
     public List<ChildView> findDemoChildren() {
         return jdbc.sql("SELECT id, name, grade, bedtime, stars FROM children WHERE family_id = 'demo-family' ORDER BY grade DESC")
                 .query((rs, rowNum) -> new ChildView(
@@ -103,26 +117,66 @@ public class StudyTimeRepository {
                 .orElseThrow(() -> new IllegalArgumentException("未找到孩子：" + childId));
     }
 
-    public void insertBatch(String id, ChildRow child, String objectKey) {
+    public void insertBatch(
+            String id,
+            ChildRow child,
+            String objectKey,
+            String recognitionMode,
+            String status,
+            String ocrProvider) {
         jdbc.sql("""
                         INSERT INTO homework_batches
-                        (id, family_id, child_id, source_object_key, recognition_mode, status, created_by)
-                        VALUES (:id, :familyId, :childId, :objectKey, 'MOCK_OCR', 'PENDING_CONFIRMATION', 'demo-parent-mom')
+                        (id, family_id, child_id, source_object_key, recognition_mode, status, created_by, ocr_provider)
+                        VALUES (:id, :familyId, :childId, :objectKey, :recognitionMode, :status,
+                                'demo-parent-mom', :ocrProvider)
                         """)
                 .param("id", id)
                 .param("familyId", child.familyId())
                 .param("childId", child.id())
                 .param("objectKey", objectKey)
+                .param("recognitionMode", recognitionMode)
+                .param("status", status)
+                .param("ocrProvider", ocrProvider)
+                .update();
+    }
+
+    public void updateBatchRecognition(
+            String batchId,
+            String status,
+            String requestId,
+            String rawText,
+            Double averageConfidence,
+            String error) {
+        jdbc.sql("""
+                        UPDATE homework_batches
+                        SET status = :status,
+                            ocr_request_id = :requestId,
+                            ocr_raw_text = :rawText,
+                            ocr_average_confidence = :averageConfidence,
+                            recognition_error = :error,
+                            recognized_at = CURRENT_TIMESTAMP(6)
+                        WHERE id = :id
+                        """)
+                .param("status", status)
+                .param("requestId", requestId)
+                .param("rawText", rawText)
+                .param("averageConfidence", averageConfidence)
+                .param("error", error)
+                .param("id", batchId)
                 .update();
     }
 
     public void insertTask(TaskRow task) {
         jdbc.sql("""
                         INSERT INTO homework_tasks
-                        (id, batch_id, child_id, subject, title, task_type, icon, estimated_minutes, estimate_source,
-                         difficulty, eye_load, confidence, status, sort_order)
-                        VALUES (:id, :batchId, :childId, :subject, :title, :taskType, :icon, :minutes, :estimateSource,
-                                :difficulty, :eyeLoad, :confidence, :status, :sortOrder)
+                        (id, batch_id, child_id, subject, title, task_type, icon, estimated_minutes,
+                         base_estimated_minutes, estimate_source, estimate_sample_size, estimate_confidence,
+                         estimate_reason, difficulty, eye_load, confidence, ocr_confidence, manually_edited,
+                         status, sort_order)
+                        VALUES (:id, :batchId, :childId, :subject, :title, :taskType, :icon, :minutes,
+                                :baseMinutes, :estimateSource, :sampleSize, :estimateConfidence, :estimateReason,
+                                :difficulty, :eyeLoad, :confidence, :ocrConfidence, :manuallyEdited,
+                                :status, :sortOrder)
                         """)
                 .param("id", task.id())
                 .param("batchId", task.batchId())
@@ -132,10 +186,16 @@ public class StudyTimeRepository {
                 .param("taskType", task.taskType())
                 .param("icon", task.icon())
                 .param("minutes", task.estimatedMinutes())
+                .param("baseMinutes", task.baseEstimatedMinutes())
                 .param("estimateSource", task.estimateSource())
+                .param("sampleSize", task.estimateSampleSize())
+                .param("estimateConfidence", task.estimateConfidence())
+                .param("estimateReason", task.estimateReason())
                 .param("difficulty", task.difficulty())
                 .param("eyeLoad", task.eyeLoad())
                 .param("confidence", task.confidence())
+                .param("ocrConfidence", task.ocrConfidence())
+                .param("manuallyEdited", task.manuallyEdited())
                 .param("status", task.status())
                 .param("sortOrder", task.sortOrder())
                 .update();
@@ -143,8 +203,10 @@ public class StudyTimeRepository {
 
     public List<TaskRow> findTasksByBatch(String batchId) {
         return jdbc.sql("""
-                        SELECT id, batch_id, child_id, subject, title, task_type, icon, estimated_minutes, estimate_source,
-                               difficulty, eye_load, confidence, status, sort_order
+                        SELECT id, batch_id, child_id, subject, title, task_type, icon, estimated_minutes,
+                               base_estimated_minutes, estimate_source, estimate_sample_size, estimate_confidence,
+                               estimate_reason, difficulty, eye_load, confidence, ocr_confidence, manually_edited,
+                               status, sort_order
                         FROM homework_tasks WHERE batch_id = :batchId ORDER BY sort_order
                         """)
                 .param("batchId", batchId)
@@ -154,16 +216,111 @@ public class StudyTimeRepository {
 
     public HomeworkBatchView getBatch(String batchId) {
         return jdbc.sql("""
-                        SELECT id, child_id, status, recognition_mode, source_object_key
+                        SELECT id, child_id, status, recognition_mode, source_object_key, ocr_provider,
+                               ocr_request_id, ocr_raw_text, ocr_average_confidence, recognition_error, recognized_at
                         FROM homework_batches WHERE id = :id
                         """)
                 .param("id", batchId)
                 .query((rs, rowNum) -> new HomeworkBatchView(
                         rs.getString("id"), rs.getString("child_id"), rs.getString("status"),
                         rs.getString("recognition_mode"), rs.getString("source_object_key"),
+                        rs.getString("ocr_provider"), rs.getString("ocr_request_id"),
+                        rs.getString("ocr_raw_text"), nullableDouble(rs, "ocr_average_confidence"),
+                        rs.getString("recognition_error"), formatDateTime(rs.getTimestamp("recognized_at")),
                         findTasksByBatch(batchId).stream().map(this::toTaskView).toList()))
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("未找到作业批次：" + batchId));
+    }
+
+    public BatchRow requireEditableBatch(String batchId) {
+        BatchRow batch = jdbc.sql("SELECT id, family_id, child_id, status FROM homework_batches WHERE id = :id")
+                .param("id", batchId)
+                .query((rs, rowNum) -> new BatchRow(
+                        rs.getString("id"), rs.getString("family_id"), rs.getString("child_id"),
+                        rs.getString("status")))
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException("未找到作业批次：" + batchId));
+        if ("CONFIRMED".equals(batch.status())) {
+            throw new IllegalArgumentException("已生成计划的作业不能再修改");
+        }
+        return batch;
+    }
+
+    public TaskRow requireEditableTask(String taskId) {
+        TaskRow task = jdbc.sql("""
+                        SELECT t.id, t.batch_id, t.child_id, t.subject, t.title, t.task_type, t.icon,
+                               t.estimated_minutes, t.base_estimated_minutes, t.estimate_source,
+                               t.estimate_sample_size, t.estimate_confidence, t.estimate_reason,
+                               t.difficulty, t.eye_load, t.confidence, t.ocr_confidence, t.manually_edited,
+                               t.status, t.sort_order
+                        FROM homework_tasks t
+                        JOIN homework_batches b ON b.id = t.batch_id
+                        WHERE t.id = :id AND b.status <> 'CONFIRMED'
+                        """)
+                .param("id", taskId)
+                .query(this::mapTask)
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException("未找到可修改的作业项：" + taskId));
+        return task;
+    }
+
+    public int nextTaskSortOrder(String batchId) {
+        return jdbc.sql("SELECT COALESCE(MAX(sort_order), -1) + 1 FROM homework_tasks WHERE batch_id = :batchId")
+                .param("batchId", batchId)
+                .query(Integer.class)
+                .single();
+    }
+
+    public void updateTask(TaskRow task) {
+        jdbc.sql("""
+                        UPDATE homework_tasks
+                        SET subject = :subject, title = :title, task_type = :taskType, icon = :icon,
+                            estimated_minutes = :minutes, base_estimated_minutes = :baseMinutes,
+                            estimate_source = :estimateSource,
+                            estimate_sample_size = :sampleSize, estimate_confidence = :estimateConfidence,
+                            estimate_reason = :estimateReason, difficulty = :difficulty, eye_load = :eyeLoad,
+                            confidence = :confidence, manually_edited = :manuallyEdited
+                        WHERE id = :id
+                        """)
+                .param("subject", task.subject())
+                .param("title", task.title())
+                .param("taskType", task.taskType())
+                .param("icon", task.icon())
+                .param("minutes", task.estimatedMinutes())
+                .param("baseMinutes", task.baseEstimatedMinutes())
+                .param("estimateSource", task.estimateSource())
+                .param("sampleSize", task.estimateSampleSize())
+                .param("estimateConfidence", task.estimateConfidence())
+                .param("estimateReason", task.estimateReason())
+                .param("difficulty", task.difficulty())
+                .param("eyeLoad", task.eyeLoad())
+                .param("confidence", task.confidence())
+                .param("manuallyEdited", task.manuallyEdited())
+                .param("id", task.id())
+                .update();
+    }
+
+    public void deleteTask(String taskId) {
+        int changed = jdbc.sql("""
+                        DELETE t FROM homework_tasks t
+                        JOIN homework_batches b ON b.id = t.batch_id
+                        WHERE t.id = :id AND b.status <> 'CONFIRMED'
+                        """)
+                .param("id", taskId)
+                .update();
+        if (changed == 0) {
+            throw new IllegalArgumentException("未找到可删除的作业项：" + taskId);
+        }
+    }
+
+    public void markBatchPendingConfirmation(String batchId) {
+        jdbc.sql("""
+                        UPDATE homework_batches
+                        SET status = 'PENDING_CONFIRMATION', recognition_error = NULL
+                        WHERE id = :id AND status <> 'CONFIRMED'
+                        """)
+                .param("id", batchId)
+                .update();
     }
 
     public void confirmBatch(String batchId) {
@@ -412,26 +569,68 @@ public class StudyTimeRepository {
                 .update();
     }
 
-    public EstimateRow findPersonalEstimate(String childId, String subject, String taskType, int fallbackMinutes) {
+    public List<HistorySample> findRecentExactHistory(
+            String childId,
+            String subject,
+            String taskType,
+            int limit) {
         return jdbc.sql("""
-                        SELECT COUNT(*) AS sample_size,
-                               ROUND(AVG(actual_seconds) / 60.0) AS average_minutes
+                        SELECT subject, task_type, base_estimated_minutes AS estimated_minutes, actual_seconds,
+                               COALESCE(updated_at, created_at) AS completed_at
                         FROM homework_tasks
                         WHERE child_id = :childId
                           AND subject = :subject
                           AND task_type = :taskType
                           AND status = 'DONE'
                           AND actual_seconds > 0
+                          AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 180 DAY)
+                        ORDER BY completed_at DESC
+                        LIMIT :limit
                         """)
                 .param("childId", childId)
                 .param("subject", subject)
                 .param("taskType", taskType)
-                .query((rs, rowNum) -> {
-                    int sampleSize = rs.getInt("sample_size");
-                    int minutes = sampleSize == 0 ? fallbackMinutes : Math.max(5, rs.getInt("average_minutes"));
-                    return new EstimateRow(minutes, sampleSize);
-                })
-                .single();
+                .param("limit", limit)
+                .query(this::mapHistorySample)
+                .list();
+    }
+
+    public List<HistorySample> findRecentSubjectHistory(String childId, String subject, int limit) {
+        return jdbc.sql("""
+                        SELECT subject, task_type, base_estimated_minutes AS estimated_minutes, actual_seconds,
+                               COALESCE(updated_at, created_at) AS completed_at
+                        FROM homework_tasks
+                        WHERE child_id = :childId
+                          AND subject = :subject
+                          AND status = 'DONE'
+                          AND actual_seconds > 0
+                          AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 180 DAY)
+                        ORDER BY completed_at DESC
+                        LIMIT :limit
+                        """)
+                .param("childId", childId)
+                .param("subject", subject)
+                .param("limit", limit)
+                .query(this::mapHistorySample)
+                .list();
+    }
+
+    public List<HistorySample> findRecentChildHistory(String childId, int limit) {
+        return jdbc.sql("""
+                        SELECT subject, task_type, base_estimated_minutes AS estimated_minutes, actual_seconds,
+                               COALESCE(updated_at, created_at) AS completed_at
+                        FROM homework_tasks
+                        WHERE child_id = :childId
+                          AND status = 'DONE'
+                          AND actual_seconds > 0
+                          AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 180 DAY)
+                        ORDER BY completed_at DESC
+                        LIMIT :limit
+                        """)
+                .param("childId", childId)
+                .param("limit", limit)
+                .query(this::mapHistorySample)
+                .list();
     }
 
     public void insertStarTransaction(String childId, int amount, String reason, String relatedId) {
@@ -498,10 +697,18 @@ public class StudyTimeRepository {
         return new TaskRow(
                 rs.getString("id"), rs.getString("batch_id"), rs.getString("child_id"),
                 rs.getString("subject"), rs.getString("title"), rs.getString("task_type"),
-                rs.getString("icon"), rs.getInt("estimated_minutes"), rs.getString("estimate_source"),
-                rs.getString("difficulty"),
-                rs.getString("eye_load"), rs.getString("confidence"), rs.getString("status"),
+                rs.getString("icon"), rs.getInt("estimated_minutes"), rs.getInt("base_estimated_minutes"),
+                rs.getString("estimate_source"), rs.getInt("estimate_sample_size"),
+                rs.getString("estimate_confidence"), rs.getString("estimate_reason"),
+                rs.getString("difficulty"), rs.getString("eye_load"), rs.getString("confidence"),
+                nullableDouble(rs, "ocr_confidence"), rs.getBoolean("manually_edited"), rs.getString("status"),
                 rs.getInt("sort_order"));
+    }
+
+    private HistorySample mapHistorySample(ResultSet rs, int rowNum) throws SQLException {
+        return new HistorySample(
+                rs.getString("subject"), rs.getString("task_type"), rs.getInt("estimated_minutes"),
+                rs.getInt("actual_seconds"), rs.getTimestamp("completed_at").toLocalDateTime());
     }
 
     private PlanItemRow mapPlanItemRow(ResultSet rs, int rowNum) throws SQLException {
@@ -519,7 +726,9 @@ public class StudyTimeRepository {
     private RecognizedTaskView toTaskView(TaskRow task) {
         return new RecognizedTaskView(
                 task.id(), task.subject(), task.title(), task.taskType(), task.icon(), task.estimatedMinutes(),
-                task.estimateSource(), task.difficulty(), task.eyeLoad(), task.confidence(), task.status());
+                task.baseEstimatedMinutes(), task.estimateSource(), task.estimateSampleSize(),
+                task.estimateConfidence(), task.estimateReason(), task.difficulty(), task.eyeLoad(),
+                task.confidence(), task.ocrConfidence(), task.manuallyEdited(), task.status());
     }
 
     public String scheduleWarning(ChildRow child, LocalTime plannedEnd, int bufferMinutes) {
@@ -536,5 +745,10 @@ public class StudyTimeRepository {
 
     private String formatDateTime(Timestamp value) {
         return value == null ? null : value.toLocalDateTime().format(DATE_TIME);
+    }
+
+    private Double nullableDouble(ResultSet rs, String column) throws SQLException {
+        double value = rs.getDouble(column);
+        return rs.wasNull() ? null : value;
     }
 }
