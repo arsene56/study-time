@@ -115,7 +115,7 @@ public class StudyTimeRepository {
                         rs.getString("id"), rs.getString("family_id"), rs.getString("name"),
                         rs.getInt("grade"), rs.getTime("bedtime").toLocalTime(), rs.getInt("stars")))
                 .optional()
-                .orElseThrow(() -> new IllegalArgumentException("未找到孩子：" + childId));
+                .orElseThrow(() -> new IllegalArgumentException("未找到学生：" + childId));
     }
 
     public void insertBatch(

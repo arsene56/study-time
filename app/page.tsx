@@ -26,13 +26,13 @@ export default function Home() {
             <div className="eyebrow"><Sparkles size={15} /> 今天也和嘀嘀一起出发</div>
             <h1>把作业安排好，<br /><span>把快乐还给晚上。</span></h1>
             <p className="launch-intro">
-              从一张作业照片开始，自动识别、估时和安排休息。家长安心看进度，孩子主动完成自己的计划。
+              从一张作业照片开始，自动识别、估时和安排休息。家长安心看进度，学生主动完成自己的计划。
             </p>
 
             <div className="role-actions">
               <a className="onboarding-entry" href="/onboarding">
                 <span><UsersRound /></span>
-                <span><strong>从首次使用开始体验</strong><small>建立家庭 · 添加孩子 · 扫码绑定设备</small></span>
+                <span><strong>从首次使用开始体验</strong><small>建立家庭 · 添加学生 · 扫码绑定设备</small></span>
                 <ArrowRight size={20} />
               </a>
               <a className="role-card role-card-primary" href="/parent">
@@ -47,7 +47,7 @@ export default function Home() {
               </a>
             </div>
 
-            <p className="demo-note"><BellRing size={14} /> 演示家庭：林家 · 两位孩子 · 数据互相隔离</p>
+            <p className="demo-note"><BellRing size={14} /> 演示家庭：林家 · 两名学生 · 数据互相隔离</p>
           </section>
 
           <section className="today-preview" aria-label="今日计划预览">

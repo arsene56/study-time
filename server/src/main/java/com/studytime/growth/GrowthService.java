@@ -148,7 +148,7 @@ public class GrowthService {
     public RewardStoreView rewards(String familyId, String childId) {
         ChildRow child = studyRepository.requireChild(childId);
         if (!familyId.equals(child.familyId())) {
-            throw new IllegalArgumentException("孩子不属于当前家庭");
+            throw new IllegalArgumentException("学生不属于当前家庭");
         }
         return new RewardStoreView(
                 child.stars(), growthRepository.equippedSkinRewardId(childId),
@@ -160,7 +160,7 @@ public class GrowthService {
     public RewardStoreView createReward(String familyId, String childId, CreateRewardRequest request) {
         ChildRow child = studyRepository.requireChild(childId);
         if (!familyId.equals(child.familyId())) {
-            throw new IllegalArgumentException("孩子不属于当前家庭");
+            throw new IllegalArgumentException("学生不属于当前家庭");
         }
         Actor actor = actor(child, request.actorId(), request.actorName(), request.actorRelation());
         String category = request.category().toUpperCase();
@@ -214,7 +214,7 @@ public class GrowthService {
         }
         boolean approved = request.approved();
         if (approved && !growthRepository.deductStars(redemption.childId(), redemption.requiredStars())) {
-            throw new IllegalArgumentException("孩子当前星星不足，暂时无法批准");
+            throw new IllegalArgumentException("学生当前星星不足，暂时无法批准");
         }
         String actorId = valueOr(request.actorId(), "demo-parent-mom");
         String actorName = valueOr(request.actorName(), "林妈妈");
@@ -363,7 +363,7 @@ public class GrowthService {
         return new Actor(
                 valueOr(actorId, child.id().replace("demo-child-", "demo-child-member-")),
                 valueOr(actorName, child.name()),
-                valueOr(relation, "孩子"));
+                valueOr(relation, "学生"));
     }
 
     private Actor parentActor(String actorId, String actorName, String relation) {

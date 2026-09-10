@@ -106,7 +106,7 @@ export default function ChildPage() {
       <aside className="prototype-rail child-rail">
         <a href="/" className="rail-brand"><Clock3 /><span>作业时光</span></a>
         <div className="rail-copy">
-          <span>孩子平板端</span>
+          <span>学生端</span>
           <h1>我的计划，<br />我来做主。</h1>
           <p>当前展示平板竖屏体验。先认领计划，再开始计时、打卡和收集星星。</p>
         </div>
@@ -119,7 +119,7 @@ export default function ChildPage() {
         <a href="/parent" className="rail-switch">切换到家长微信端 <span>→</span></a>
       </aside>
 
-      <section className="device-frame tablet-frame" aria-label="作业时光孩子平板端原型">
+      <section className="device-frame tablet-frame" aria-label="作业时光学生端原型">
         <div className="tablet-status"><span>17:28 · 9月8日 星期二</span><span>学习模式　Wi‑Fi　78%</span></div>
         <div className="child-app">
           <header className="tablet-header">

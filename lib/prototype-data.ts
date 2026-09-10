@@ -155,9 +155,9 @@ export const initialChildren: ChildProfile[] = [
 
 export const initialActivities: ActivityEntry[] = [
   { id: 'a1', childId: 'xiaoman', actor: '妈妈', relation: '妈妈', action: '上传了今天的作业照片，嘀嘀已生成计划', time: '16:48', tone: 'mint' },
-  { id: 'a2', childId: 'xiaoman', actor: '林小满', relation: '孩子', action: '把英语跟读移到了生字练习之后', time: '17:02', tone: 'orange' },
+  { id: 'a2', childId: 'xiaoman', actor: '林小满', relation: '学生', action: '把英语跟读移到了生字练习之后', time: '17:02', tone: 'orange' },
   { id: 'a3', childId: 'xiaoman', actor: '爸爸', relation: '爸爸', action: '将今晚兴趣班调整为 20:00 开始', time: '17:06', tone: 'blue' },
-  { id: 'a4', childId: 'keke', actor: '林可可', relation: '孩子', action: '完成了拼音卡片朗读，获得 5 颗星', time: '17:23', tone: 'orange' },
+  { id: 'a4', childId: 'keke', actor: '林可可', relation: '学生', action: '完成了拼音卡片朗读，获得 5 颗星', time: '17:23', tone: 'orange' },
 ];
 
 export const initialRewards: RewardItem[] = [

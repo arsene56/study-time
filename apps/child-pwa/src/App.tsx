@@ -41,7 +41,7 @@ function actor(childName?: string) {
   return {
     actorId: selectedChildId.replace('demo-child-', 'demo-child-member-'),
     actorName: childName ?? '小满',
-    actorRelation: '孩子',
+    actorRelation: '学生',
   };
 }
 

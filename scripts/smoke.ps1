@@ -18,7 +18,7 @@ if (-not $capability.configuredProvider -or -not $capability.message) { throw "O
 Write-Host "2/15 读取演示家庭并模拟识别"
 $context = Invoke-RestMethod -Uri "$ApiUrl/demo/context"
 $child = $context.children | Select-Object -Last 1
-if (-not $child) { throw "演示家庭中没有孩子" }
+if (-not $child) { throw "演示家庭中没有学生" }
 $batch = Invoke-RestMethod -Method Post -Uri "$ApiUrl/homework-batches/mock-recognize?childId=$($child.id)"
 if ($batch.status -ne "PENDING_CONFIRMATION" -or $batch.tasks.Count -eq 0) { throw "模拟识别没有返回待确认任务" }
 if (-not $batch.ocrProvider -or -not $batch.ocrRawText) { throw "识别批次缺少 OCR 元数据" }
@@ -42,7 +42,7 @@ if (-not $firstTask -or $plan.bedtimeBufferMinutes -lt 30) { throw "计划生成
 $actor = @{
     actorId = $child.id -replace "demo-child-", "demo-child-member-"
     actorName = $child.name
-    actorRelation = "孩子"
+    actorRelation = "学生"
 }
 
 Write-Host "5/15 开始任务并选择继续挑战"
@@ -57,7 +57,7 @@ $completeRequest = $actor + @{ actualSeconds = 180 }
 $completed = Invoke-RestMethod -Method Post -Uri "$ApiUrl/plan-items/$($firstTask.id)/complete" -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Utf8JsonBytes $completeRequest)
 if (($completed.items | Where-Object id -eq $firstTask.id).status -ne "DONE") { throw "任务完成状态没有写回" }
 
-Write-Host "7/15 检查孩子个性化画像"
+Write-Host "7/15 检查学生个性化画像"
 $profile = Invoke-RestMethod -Uri "$ApiUrl/children/$($child.id)/personalization-profile"
 if ($profile.childId -ne $child.id -or -not $profile.confidence -or $profile.totalSamples -lt 1) { throw "个性化画像没有吸收完成样本" }
 

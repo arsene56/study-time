@@ -11,14 +11,14 @@ export const metadata: Metadata = {
   icons: { icon: '/favicon.svg' },
   openGraph: {
     title: '作业时光｜自己规划，快乐成长',
-    description: '拍照识别作业，智能排期；家长安心看见，孩子自主完成。',
+    description: '拍照识别作业，智能排期；家长安心看见，学生自主完成。',
     type: 'website',
     images: [{ url: '/og.png', width: 1200, height: 630, alt: '作业时光与小时光机器人嘀嘀' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: '作业时光｜自己规划，快乐成长',
-    description: '拍照识别作业，智能排期；家长安心看见，孩子自主完成。',
+    description: '拍照识别作业，智能排期；家长安心看见，学生自主完成。',
     images: ['/og.png'],
   },
 };

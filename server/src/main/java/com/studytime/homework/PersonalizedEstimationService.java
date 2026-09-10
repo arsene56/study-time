@@ -64,7 +64,7 @@ public class PersonalizedEstimationService {
         String confidence = total >= 12 ? "HIGH" : total >= 4 ? "MEDIUM" : "LOW";
         String summary = switch (level) {
             case "STABLE" -> "嘀嘀已形成较稳定的个人时间曲线，后续会持续滚动更新";
-            case "LEARNING" -> "嘀嘀正在学习孩子的节奏，再完成几项作业会更准确";
+            case "LEARNING" -> "嘀嘀正在学习学生的节奏，再完成几项作业会更准确";
             default -> "刚开始积累样本，当前计划主要采用年级通用规则";
         };
 

@@ -193,7 +193,7 @@ public class PlanExecutionService {
         return new Actor(
                 valueOr(actorId, child.id().replace("demo-child-", "demo-child-member-")),
                 valueOr(actorName, child.name()),
-                valueOr(relation, "孩子"));
+                valueOr(relation, "学生"));
     }
 
     private void log(ChildRow child, Actor actor, String actionType, String description) {

@@ -66,15 +66,15 @@ export default function ParentPage() {
         <a href="/" className="rail-brand"><Clock3 /><span>作业时光</span></a>
         <div className="rail-copy">
           <span>家长微信端</span>
-          <h1>安心看见成长，<br />把安排交给孩子。</h1>
+          <h1>安心看见成长，<br />把安排交给学生。</h1>
           <p>当前展示 390 × 844 手机竖屏体验。所有操作会保存到这台设备。</p>
         </div>
         <div className="rail-family-card">
           <p>林家 · 今日动态</p>
           <strong>{activities.length} 条亲子协作记录</strong>
-          <span>孩子的每次自主调整，家长都能看见。</span>
+          <span>学生的每次自主调整，家长都能看见。</span>
         </div>
-        <a href="/child" className="rail-switch">切换到孩子平板端 <span>→</span></a>
+        <a href="/child" className="rail-switch">切换到学生端 <span>→</span></a>
       </aside>
 
       <section className="device-frame phone-frame" aria-label="作业时光家长端原型">
@@ -85,7 +85,7 @@ export default function ParentPage() {
             <button className="icon-button" aria-label="通知"><Bell size={19} /><i /></button>
           </header>
 
-          <div className="child-switcher" aria-label="切换孩子">
+          <div className="child-switcher" aria-label="切换学生">
             {children.map((child) => (
               <button
                 key={child.id}
@@ -95,7 +95,7 @@ export default function ParentPage() {
                 <span>{child.avatar}</span><b>{child.name.slice(1)}</b><small>{child.grade}</small>
               </button>
             ))}
-            <button className="add-child-chip" onClick={() => setFamilyOpen(true)} aria-label="添加孩子"><Plus /></button>
+            <button className="add-child-chip" onClick={() => setFamilyOpen(true)} aria-label="添加学生"><Plus /></button>
           </div>
 
           <div className="parent-scroll">
@@ -185,7 +185,7 @@ export default function ParentPage() {
                 </section>
                 <section className="insight-card"><span className="insight-icon">💡</span><div><strong>嘀嘀发现</strong><p>数学书写平均比预估多 7 分钟；英语跟读完成得更快。下周会自动微调。</p></div></section>
                 <section className="comment-card">
-                  <div className="comment-title"><MessageCircleHeart /><strong>给孩子一句鼓励</strong><span>亲子共享</span></div>
+                  <div className="comment-title"><MessageCircleHeart /><strong>给学生一句鼓励</strong><span>亲子共享</span></div>
                   <textarea value={comment} onChange={(event) => setComment(event.target.value)} maxLength={60} />
                   <div><span>{comment.length}/60</span><button onClick={() => showToast('鼓励已送达学生端 💚')}>送出鼓励</button></div>
                 </section>
@@ -201,7 +201,7 @@ export default function ParentPage() {
                   {[['妈妈','主要照护人','妈','mint'],['爸爸','共同照护人','爸','blue'],['林小满','三年级 · 平板已绑定','满','orange'],['林可可','一年级 · 平板已绑定','可','pink']].map((member) => (
                     <div className="member-row" key={member[0]}><span className={`member-avatar ${member[3]}`}>{member[2]}</span><p><strong>{member[0]}</strong><small>{member[1]}</small></p><button><Settings2 /></button></div>
                   ))}
-                  <button className="family-outline-button" onClick={() => setFamilyOpen(true)}><QrCode />邀请家人或绑定孩子设备</button>
+                  <button className="family-outline-button" onClick={() => setFamilyOpen(true)}><QrCode />邀请家人或绑定学生设备</button>
                 </section>
                 <section className="routine-card">
                   <div className="family-card-title"><strong>本周固定作息</strong><button onClick={() => showToast('已进入作息编辑')}>编辑</button></div>
@@ -211,7 +211,7 @@ export default function ParentPage() {
                   <div className="routine-item"><i className="sleep-dot" /><time>21:30</time><p><strong>准备睡觉</strong><small>睡前预留 55 分钟</small></p></div>
                   <button className="add-exception" onClick={() => showToast('已打开当天例外设置')}><Plus />添加当天临时安排</button>
                 </section>
-                <section className="eye-rule-card"><span>👀</span><div><strong>{activeChild.grade}健康用眼规则</strong><p>连续近距离学习 {getFocusMinutes(activeChild.grade)} 分钟，完整休息 10 分钟；每 20 分钟远眺 20 秒。</p></div><button onClick={() => showToast('家长与孩子都可以自定义')}>调整</button></section>
+                <section className="eye-rule-card"><span>👀</span><div><strong>{activeChild.grade}健康用眼规则</strong><p>连续近距离学习 {getFocusMinutes(activeChild.grade)} 分钟，完整休息 10 分钟；每 20 分钟远眺 20 秒。</p></div><button onClick={() => showToast('家长与学生都可以自定义')}>调整</button></section>
               </section>
             )}
 
@@ -221,7 +221,7 @@ export default function ParentPage() {
                 {pendingRewards.length > 0 && (
                   <section className="approval-card">
                     <div className="family-card-title"><strong>待审批奖励</strong><span>{pendingRewards.length}</span></div>
-                    {pendingRewards.map((reward) => <div className="approval-row" key={reward.id}><span>{reward.icon}</span><p><strong>{reward.title}</strong><small>孩子设置 · {reward.stars} 颗星</small></p><button onClick={() => { approveReward(reward.id); showToast('奖励已批准'); }}>批准</button></div>)}
+                    {pendingRewards.map((reward) => <div className="approval-row" key={reward.id}><span>{reward.icon}</span><p><strong>{reward.title}</strong><small>学生设置 · {reward.stars} 颗星</small></p><button onClick={() => { approveReward(reward.id); showToast('奖励已批准'); }}>批准</button></div>)}
                   </section>
                 )}
                 <section className="settings-list">
@@ -287,7 +287,7 @@ export default function ParentPage() {
 
       <Dialog open={familyOpen} onOpenChange={setFamilyOpen}>
         <DialogContent className="family-dialog">
-          <DialogHeader><DialogTitle>邀请家人或绑定设备</DialogTitle><DialogDescription>家长微信扫码后选择家庭关系；孩子平板由家长扫码绑定。</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>邀请家人或绑定设备</DialogTitle><DialogDescription>家长微信扫码后选择家庭关系；学生设备由家长扫码绑定。</DialogDescription></DialogHeader>
           <div className="mock-qr" aria-label="演示二维码"><QrCode /></div>
           <div className="relation-pills"><span>妈妈</span><span>爸爸</span><span>其他照护人</span></div>
           <p className="qr-hint">此二维码为原型演示，不会连接真实微信账号</p>

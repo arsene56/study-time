@@ -103,7 +103,7 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
     setFamilyReady: (ready) => setState((previous) => ({ ...previous, familyReady: ready })),
     claimPlan: () => {
       updateActiveChild((child) => ({ ...child, claimed: true }));
-      addActivity({ childId: state.activeChildId, actor: activeChild.name, relation: '孩子', action: '认领了今天的计划，准备开始', tone: 'orange' });
+      addActivity({ childId: state.activeChildId, actor: activeChild.name, relation: '学生', action: '认领了今天的计划，准备开始', tone: 'orange' });
     },
     moveTask: (taskId, direction, actor = 'child') => {
       updateActiveChild((child) => {
@@ -116,7 +116,7 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
       });
       addActivity(actor === 'parent'
         ? { childId: state.activeChildId, actor: '妈妈', relation: '妈妈', action: '调整了两项任务的顺序', tone: 'mint' }
-        : { childId: state.activeChildId, actor: activeChild.name, relation: '孩子', action: '自主调整了两项任务的顺序', tone: 'orange' });
+        : { childId: state.activeChildId, actor: activeChild.name, relation: '学生', action: '自主调整了两项任务的顺序', tone: 'orange' });
     },
     startTask: (taskId) => {
       updateActiveChild((child) => ({
@@ -140,7 +140,7 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
           ? { ...item, status: 'done', evidence: evidence || item.evidence, actualSeconds: item.actualSeconds || item.estimatedMinutes * 60 }
           : item),
       }));
-      if (task) addActivity({ childId: state.activeChildId, actor: activeChild.name, relation: '孩子', action: `完成了“${task.title}”，获得 ${task.kind === 'break' ? 1 : 5} 颗星`, tone: 'orange' });
+      if (task) addActivity({ childId: state.activeChildId, actor: activeChild.name, relation: '学生', action: `完成了“${task.title}”，获得 ${task.kind === 'break' ? 1 : 5} 颗星`, tone: 'orange' });
     },
     tickTask: (taskId) => updateActiveChild((child) => ({
       ...child,
@@ -160,7 +160,7 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
       addActivity({
         childId: state.activeChildId,
         actor: activeChild.name,
-        relation: '孩子',
+        relation: '学生',
         action: decision === 'skip' ? '暂时跳过了一项困难作业，已向家长求助' : '选择继续挑战超时作业，剩余计划已自动更新',
         tone: decision === 'skip' ? 'blue' : 'orange',
       });
@@ -170,7 +170,7 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
         ...previous,
         rewards: [{ id: `r-${Date.now()}`, title, stars, icon: '✨', custom: true, status: 'pending' }, ...previous.rewards],
       }));
-      addActivity({ childId: state.activeChildId, actor: activeChild.name, relation: '孩子', action: `发起了新奖励“${title}”的审批`, tone: 'orange' });
+      addActivity({ childId: state.activeChildId, actor: activeChild.name, relation: '学生', action: `发起了新奖励“${title}”的审批`, tone: 'orange' });
     },
     approveReward: (rewardId) => setState((previous) => ({
       ...previous,
@@ -180,7 +180,7 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
       const reward = state.rewards.find((item) => item.id === rewardId);
       if (!reward || reward.status !== 'available' || activeChild.stars < reward.stars) return false;
       updateActiveChild((child) => ({ ...child, stars: child.stars - reward.stars }));
-      addActivity({ childId: state.activeChildId, actor: activeChild.name, relation: '孩子', action: `兑换了“${reward.title}”`, tone: 'orange' });
+      addActivity({ childId: state.activeChildId, actor: activeChild.name, relation: '学生', action: `兑换了“${reward.title}”`, tone: 'orange' });
       return true;
     },
     resetDemo: () => {
