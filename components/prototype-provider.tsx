@@ -47,6 +47,17 @@ const initialState: DemoState = {
 
 const DemoContext = createContext<DemoContextValue | null>(null);
 
+function isDemoState(value: unknown): value is DemoState {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<DemoState>;
+  return typeof candidate.activeStudentId === 'string'
+    && Array.isArray(candidate.students)
+    && candidate.students.length > 0
+    && Array.isArray(candidate.activities)
+    && Array.isArray(candidate.rewards)
+    && typeof candidate.familyReady === 'boolean';
+}
+
 function currentTime() {
   return new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
 }
@@ -107,8 +118,11 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
       const saved = window.localStorage.getItem(storageKey);
       // Persisted demo data is intentionally hydrated after mount so the
       // server and first client render remain identical.
-      // oxlint-disable-next-line react/react-compiler
-      if (saved) setState(JSON.parse(saved) as DemoState);
+      if (saved) {
+        const parsed: unknown = JSON.parse(saved);
+        // oxlint-disable-next-line react/react-compiler
+        if (isDemoState(parsed)) setState(parsed);
+      }
     } catch {
       // The prototype still works when storage is blocked.
     }
