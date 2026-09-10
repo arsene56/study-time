@@ -2,7 +2,6 @@ package com.studytime.growth;
 
 import com.studytime.api.ApiModels.AddWeeklyCommentRequest;
 import com.studytime.api.ApiModels.BadgeView;
-import com.studytime.api.ApiModels.ClaimWeeklyBonusRequest;
 import com.studytime.api.ApiModels.CreateRewardRequest;
 import com.studytime.api.ApiModels.EquipSkinRequest;
 import com.studytime.api.ApiModels.RedeemRewardRequest;
@@ -18,7 +17,10 @@ import com.studytime.domain.StudyTimeRepository.StudentRow;
 import com.studytime.growth.GrowthRepository.RedemptionRow;
 import com.studytime.growth.GrowthRepository.WeeklyGoalRow;
 import com.studytime.growth.GrowthRepository.WeeklyTotals;
+import com.studytime.notification.NotificationService;
 import com.studytime.realtime.PlanUpdateWebSocketHandler;
+import com.studytime.security.AccessControlService;
+import com.studytime.security.MemberPrincipal;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,19 +42,26 @@ public class GrowthService {
     private final GrowthRepository growthRepository;
     private final StudyTimeRepository studyRepository;
     private final PlanUpdateWebSocketHandler updates;
+    private final AccessControlService accessControl;
+    private final NotificationService notifications;
 
     public GrowthService(
             GrowthRepository growthRepository,
             StudyTimeRepository studyRepository,
-            PlanUpdateWebSocketHandler updates) {
+            PlanUpdateWebSocketHandler updates,
+            AccessControlService accessControl,
+            NotificationService notifications) {
         this.growthRepository = growthRepository;
         this.studyRepository = studyRepository;
         this.updates = updates;
+        this.accessControl = accessControl;
+        this.notifications = notifications;
     }
 
     @Transactional
     public WeeklyReportView weeklyReport(String studentId, LocalDate requestedWeekStart) {
         StudentRow student = studyRepository.requireStudent(studentId);
+        accessControl.requireStudentAccess(student);
         LocalDate weekStart = normalizeWeek(requestedWeekStart);
         LocalDate weekEndExclusive = weekStart.plusDays(7);
         WeeklyTotals totals = growthRepository.weeklyTotals(student.id(), weekStart, weekEndExclusive);
@@ -85,13 +94,15 @@ public class GrowthService {
     @Transactional
     public WeeklyReportView addComment(String studentId, AddWeeklyCommentRequest request) {
         StudentRow student = studyRepository.requireStudent(studentId);
+        MemberPrincipal actor = accessControl.requireStudentAccess(student);
         LocalDate weekStart = normalizeWeek(parseDate(request.weekStart()));
-        Actor actor = actor(student, request.actorId(), request.actorName(), request.actorRelation());
         growthRepository.insertWeeklyComment(
-                student.familyId(), student.id(), weekStart, actor.id(), actor.name(), actor.relation(),
+                student.familyId(), student.id(), weekStart,
+                actor.memberId(), actor.displayName(), actor.relationName(),
                 request.content().trim());
         studyRepository.insertActivity(
-                UUID.randomUUID().toString(), student.familyId(), student.id(), actor.id(), actor.name(), actor.relation(),
+                UUID.randomUUID().toString(), student.familyId(), student.id(),
+                actor.memberId(), actor.displayName(), actor.relationName(),
                 "WEEKLY_COMMENT_ADDED", "留下了本周鼓励：“" + request.content().trim() + "”");
         updates.publish(student.id(), "WEEKLY_REPORT_UPDATED");
         return weeklyReport(student.id(), weekStart);
@@ -100,18 +111,19 @@ public class GrowthService {
     @Transactional
     public WeeklyReportView saveWeeklyGoal(String studentId, SaveWeeklyGoalRequest request) {
         StudentRow student = studyRepository.requireStudent(studentId);
+        MemberPrincipal actor = accessControl.requireParentAccess(student);
         LocalDate weekStart = normalizeWeek(null);
         growthRepository.weeklyGoal(student.id(), weekStart).ifPresent(existing -> {
             if ("CLAIMED".equals(existing.status())) {
                 throw new IllegalArgumentException("本周奖励已结算，不能再修改目标");
             }
         });
-        Actor actor = parentActor(request.actorId(), request.actorName(), request.actorRelation());
         growthRepository.upsertWeeklyGoal(
                 UUID.randomUUID().toString(), student.familyId(), student.id(), weekStart,
-                request.targetTasks(), request.targetFocusMinutes(), request.bonusStars(), actor.id());
+                request.targetTasks(), request.targetFocusMinutes(), request.bonusStars(), actor.memberId());
         studyRepository.insertActivity(
-                UUID.randomUUID().toString(), student.familyId(), student.id(), actor.id(), actor.name(), actor.relation(),
+                UUID.randomUUID().toString(), student.familyId(), student.id(),
+                actor.memberId(), actor.displayName(), actor.relationName(),
                 "WEEKLY_GOAL_UPDATED", "设置了本周目标：完成 " + request.targetTasks()
                         + " 项作业、专注 " + request.targetFocusMinutes() + " 分钟，达成奖励 "
                         + request.bonusStars() + " 颗星");
@@ -120,8 +132,9 @@ public class GrowthService {
     }
 
     @Transactional
-    public WeeklyReportView claimWeeklyBonus(String studentId, ClaimWeeklyBonusRequest request) {
+    public WeeklyReportView claimWeeklyBonus(String studentId) {
         StudentRow student = studyRepository.requireStudent(studentId);
+        MemberPrincipal actor = accessControl.requireOwnStudent(student);
         LocalDate weekStart = normalizeWeek(null);
         WeeklyGoalRow goal = growthRepository.requireWeeklyGoalForUpdate(student.id(), weekStart);
         if ("CLAIMED".equals(goal.status())) {
@@ -131,15 +144,13 @@ public class GrowthService {
         if (!goalAchieved(goal, totals)) {
             throw new IllegalArgumentException("还差一点就达成本周目标了，继续加油");
         }
-        Actor actor = actor(student, request == null ? null : request.actorId(),
-                request == null ? null : request.actorName(),
-                request == null ? null : request.actorRelation());
-        growthRepository.claimWeeklyGoal(goal.id(), actor.id());
+        growthRepository.claimWeeklyGoal(goal.id(), actor.memberId());
         studyRepository.addStars(student.id(), goal.bonusStars());
         studyRepository.insertStarTransaction(
                 student.id(), goal.bonusStars(), "完成本周成长目标", goal.id());
         studyRepository.insertActivity(
-                UUID.randomUUID().toString(), student.familyId(), student.id(), actor.id(), actor.name(), actor.relation(),
+                UUID.randomUUID().toString(), student.familyId(), student.id(),
+                actor.memberId(), actor.displayName(), actor.relationName(),
                 "WEEKLY_BONUS_CLAIMED", "领取了本周成长奖励 " + goal.bonusStars() + " 颗星");
         updates.publish(student.id(), "WEEKLY_BONUS_CLAIMED");
         return weeklyReport(student.id(), weekStart);
@@ -147,6 +158,7 @@ public class GrowthService {
 
     public RewardStoreView rewards(String familyId, String studentId) {
         StudentRow student = studyRepository.requireStudent(studentId);
+        accessControl.requireStudentAccess(student);
         if (!familyId.equals(student.familyId())) {
             throw new IllegalArgumentException("学生不属于当前家庭");
         }
@@ -159,19 +171,20 @@ public class GrowthService {
     @Transactional
     public RewardStoreView createReward(String familyId, String studentId, CreateRewardRequest request) {
         StudentRow student = studyRepository.requireStudent(studentId);
+        MemberPrincipal actor = accessControl.requireStudentAccess(student);
         if (!familyId.equals(student.familyId())) {
             throw new IllegalArgumentException("学生不属于当前家庭");
         }
-        Actor actor = actor(student, request.actorId(), request.actorName(), request.actorRelation());
         String category = request.category().toUpperCase();
         if (!Set.of("SKIN", "WISH").contains(category)) {
             throw new IllegalArgumentException("奖励类型只能是嘀嘀皮肤或家庭心愿");
         }
         growthRepository.insertReward(
                 UUID.randomUUID().toString(), familyId, request.name().trim(), request.icon(),
-                request.requiredStars(), category, actor.id());
+                request.requiredStars(), category, actor.memberId());
         studyRepository.insertActivity(
-                UUID.randomUUID().toString(), familyId, studentId, actor.id(), actor.name(), actor.relation(),
+                UUID.randomUUID().toString(), familyId, studentId,
+                actor.memberId(), actor.displayName(), actor.relationName(),
                 "REWARD_CREATED", "设置了新奖励“" + request.name().trim() + "”，需要 "
                         + request.requiredStars() + " 颗星");
         updates.publish(studentId, "REWARD_UPDATED");
@@ -181,6 +194,7 @@ public class GrowthService {
     @Transactional
     public RewardStoreView redeem(String rewardId, RedeemRewardRequest request) {
         StudentRow student = studyRepository.requireStudent(request.studentId());
+        MemberPrincipal actor = accessControl.requireOwnStudent(student);
         List<RewardView> available = growthRepository.rewards(student.familyId(), student.id(), student.stars());
         RewardView reward = available.stream()
                 .filter(item -> item.id().equals(rewardId))
@@ -195,12 +209,16 @@ public class GrowthService {
         if (student.stars() < reward.requiredStars()) {
             throw new IllegalArgumentException("还差 " + (reward.requiredStars() - student.stars()) + " 颗星");
         }
-        Actor actor = actor(student, request.actorId(), request.actorName(), request.actorRelation());
         String redemptionId = UUID.randomUUID().toString();
-        growthRepository.insertRedemption(redemptionId, rewardId, student.id(), actor.id());
+        growthRepository.insertRedemption(redemptionId, rewardId, student.id(), actor.memberId());
         studyRepository.insertActivity(
-                UUID.randomUUID().toString(), student.familyId(), student.id(), actor.id(), actor.name(), actor.relation(),
+                UUID.randomUUID().toString(), student.familyId(), student.id(),
+                actor.memberId(), actor.displayName(), actor.relationName(),
                 "REWARD_REQUESTED", "发起了“" + reward.name() + "”奖励审批");
+        notifications.notifyParents(
+                student, "REWARD_APPROVAL_REQUESTED", "新的奖励审批",
+                student.name() + "申请兑换“" + reward.name() + "”",
+                "/rewards", "REWARD_APPROVAL_REQUESTED:" + redemptionId);
         updates.publish(student.id(), "REWARD_REQUESTED");
         return rewards(student.familyId(), student.id());
     }
@@ -209,6 +227,7 @@ public class GrowthService {
     public RewardStoreView review(String redemptionId, ReviewRewardRequest request) {
         RedemptionRow redemption = growthRepository.requireRedemptionForUpdate(redemptionId);
         StudentRow student = studyRepository.requireStudent(redemption.studentId());
+        MemberPrincipal actor = accessControl.requireParentAccess(student);
         if (!"REQUESTED".equals(redemption.status())) {
             return rewards(redemption.familyId(), redemption.studentId());
         }
@@ -216,18 +235,22 @@ public class GrowthService {
         if (approved && !growthRepository.deductStars(redemption.studentId(), redemption.requiredStars())) {
             throw new IllegalArgumentException("学生当前星星不足，暂时无法批准");
         }
-        String actorId = valueOr(request.actorId(), "demo-parent-mom");
-        String actorName = valueOr(request.actorName(), "林妈妈");
-        String relation = valueOr(request.actorRelation(), "妈妈");
-        growthRepository.reviewRedemption(redemption.id(), approved, actorId);
+        growthRepository.reviewRedemption(redemption.id(), approved, actor.memberId());
         if (approved) {
             studyRepository.insertStarTransaction(
                     student.id(), -redemption.requiredStars(), "兑换“" + redemption.rewardName() + "”", redemption.id());
         }
         studyRepository.insertActivity(
-                UUID.randomUUID().toString(), student.familyId(), student.id(), actorId, actorName, relation,
+                UUID.randomUUID().toString(), student.familyId(), student.id(),
+                actor.memberId(), actor.displayName(), actor.relationName(),
                 approved ? "REWARD_APPROVED" : "REWARD_REJECTED",
                 (approved ? "批准了" : "暂缓了") + "“" + redemption.rewardName() + "”奖励");
+        notifications.notifyStudent(
+                student, approved ? "REWARD_APPROVED" : "REWARD_DEFERRED",
+                approved ? "奖励审批通过" : "奖励暂缓兑换",
+                (approved ? "“" + redemption.rewardName() + "”已经兑换成功！"
+                        : "“" + redemption.rewardName() + "”这次先不兑换，可以和家长聊一聊。"),
+                "/rewards", (approved ? "REWARD_APPROVED:" : "REWARD_DEFERRED:") + redemption.id());
         updates.publish(student.id(), approved ? "REWARD_APPROVED" : "REWARD_REJECTED");
         return rewards(redemption.familyId(), redemption.studentId());
     }
@@ -235,6 +258,7 @@ public class GrowthService {
     @Transactional
     public RewardStoreView equipSkin(String rewardId, EquipSkinRequest request) {
         StudentRow student = studyRepository.requireStudent(request.studentId());
+        MemberPrincipal actor = accessControl.requireOwnStudent(student);
         if (!growthRepository.ownsApprovedSkin(student.id(), rewardId)) {
             throw new IllegalArgumentException("请先解锁这款嘀嘀皮肤");
         }
@@ -242,10 +266,10 @@ public class GrowthService {
                 .filter(item -> item.id().equals(rewardId) && "SKIN".equals(item.category()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("未找到嘀嘀皮肤"));
-        Actor actor = actor(student, request.actorId(), request.actorName(), request.actorRelation());
         growthRepository.equipSkin(student.id(), rewardId);
         studyRepository.insertActivity(
-                UUID.randomUUID().toString(), student.familyId(), student.id(), actor.id(), actor.name(), actor.relation(),
+                UUID.randomUUID().toString(), student.familyId(), student.id(),
+                actor.memberId(), actor.displayName(), actor.relationName(),
                 "DIDI_SKIN_EQUIPPED", "为嘀嘀换上了“" + skin.name() + "”");
         updates.publish(student.id(), "DIDI_SKIN_EQUIPPED");
         return rewards(student.familyId(), student.id());
@@ -357,27 +381,6 @@ public class GrowthService {
 
     private LocalDate parseDate(String value) {
         return value == null || value.isBlank() ? null : LocalDate.parse(value);
-    }
-
-    private Actor actor(StudentRow student, String actorId, String actorName, String relation) {
-        return new Actor(
-                valueOr(actorId, student.id().replace("demo-student-", "demo-student-member-")),
-                valueOr(actorName, student.name()),
-                valueOr(relation, "学生"));
-    }
-
-    private Actor parentActor(String actorId, String actorName, String relation) {
-        return new Actor(
-                valueOr(actorId, "demo-parent-mom"),
-                valueOr(actorName, "林妈妈"),
-                valueOr(relation, "妈妈"));
-    }
-
-    private String valueOr(String value, String fallback) {
-        return value == null || value.isBlank() ? fallback : value;
-    }
-
-    private record Actor(String id, String name, String relation) {
     }
 
     private record BadgeCandidate(

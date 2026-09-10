@@ -5,7 +5,6 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -18,12 +17,12 @@ public class PlanUpdateWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        String studentId = studentId(session);
+        Object authorizedStudentId = session.getAttributes().get("studentId");
+        String studentId = authorizedStudentId == null ? null : authorizedStudentId.toString();
         if (studentId == null || studentId.isBlank()) {
             session.close(CloseStatus.BAD_DATA.withReason("studentId is required"));
             return;
         }
-        session.getAttributes().put("studentId", studentId);
         sessionsByStudent.computeIfAbsent(studentId, ignored -> ConcurrentHashMap.newKeySet()).add(session);
     }
 
@@ -55,12 +54,5 @@ public class PlanUpdateWebSocketHandler extends TextWebSocketHandler {
                 // A later reconnect reloads the current plan from the database.
             }
         }
-    }
-
-    private String studentId(WebSocketSession session) {
-        if (session.getUri() == null) {
-            return null;
-        }
-        return UriComponentsBuilder.fromUri(session.getUri()).build().getQueryParams().getFirst("studentId");
     }
 }

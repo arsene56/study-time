@@ -1,0 +1,70 @@
+name: quality
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.16.0
+          cache: pnpm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Frontend quality and builds
+        run: |
+          pnpm lint
+          pnpm build:shared
+          pnpm --filter @study-time/student-pwa build
+          pnpm --filter @study-time/parent-miniapp build:h5
+          pnpm --filter @study-time/parent-miniapp build:weapp
+          pnpm build
+
+      - name: Start local infrastructure
+        run: docker compose up -d --wait
+
+      - name: Backend tests
+        working-directory: server
+        run: ./mvnw test
+
+      - name: Start backend
+        working-directory: server
+        run: nohup ./mvnw spring-boot:run > ../server-ci.log 2>&1 &
+
+      - name: Wait for backend
+        run: |
+          for attempt in {1..60}; do
+            curl --fail --silent http://127.0.0.1:8080/actuator/health && exit 0
+            sleep 2
+          done
+          cat server-ci.log
+          exit 1
+
+      - name: Authenticated business smoke test
+        shell: pwsh
+        run: ./scripts/smoke.ps1
+
+      - name: Show service logs on failure
+        if: failure()
+        run: |
+          cat server-ci.log || true
+          docker compose logs --no-color || true

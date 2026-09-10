@@ -1,10 +1,13 @@
 package com.studytime.api;
 
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
+import org.slf4j.MDC;
 
 import java.util.List;
 
@@ -95,33 +98,24 @@ public final class ApiModels {
             @NotBlank String eyeLoad) {
     }
 
-    public record CreatePlanRequest(@NotBlank String startTime) {
-    }
-
-    public record ActorRequest(String actorId, String actorName, String actorRelation) {
+    public record CreatePlanRequest(
+            @NotBlank
+            @Pattern(regexp = "(?:[01]\\d|2[0-3]):[0-5]\\d", message = "开始时间必须是 HH:mm 格式")
+            String startTime) {
     }
 
     public record CompletePlanItemRequest(
-            String actorId,
-            String actorName,
-            String actorRelation,
-            @Min(0) Integer actualSeconds) {
+            @Min(0) @Max(43200) Integer actualSeconds) {
     }
 
     public record OverrunDecisionRequest(
             @NotBlank String decision,
-            @Min(0) Integer actualSeconds,
-            @Min(1) Integer extraMinutes,
-            String actorId,
-            String actorName,
-            String actorRelation) {
+            @Min(0) @Max(43200) Integer actualSeconds,
+            @Min(1) @Max(60) Integer extraMinutes) {
     }
 
     public record ReorderPlanRequest(
-            @NotEmpty List<String> orderedItemIds,
-            String actorId,
-            String actorName,
-            String actorRelation) {
+            @NotEmpty @Size(max = 100) List<String> orderedItemIds) {
     }
 
     public record PlanItemView(
@@ -163,6 +157,23 @@ public final class ApiModels {
             String actionType,
             String description,
             String createdAt) {
+    }
+
+    public record NotificationView(
+            String id,
+            String studentId,
+            String studentName,
+            String eventType,
+            String title,
+            String message,
+            String actionPath,
+            boolean read,
+            String createdAt) {
+    }
+
+    public record NotificationFeedView(
+            int unreadCount,
+            List<NotificationView> items) {
     }
 
     public record SubjectSummaryView(
@@ -239,25 +250,13 @@ public final class ApiModels {
 
     public record AddWeeklyCommentRequest(
             @NotBlank @Size(max = 240) String content,
-            String weekStart,
-            String actorId,
-            String actorName,
-            String actorRelation) {
+            String weekStart) {
     }
 
     public record SaveWeeklyGoalRequest(
             @Min(1) int targetTasks,
             @Min(1) int targetFocusMinutes,
-            @Min(1) int bonusStars,
-            String actorId,
-            String actorName,
-            String actorRelation) {
-    }
-
-    public record ClaimWeeklyBonusRequest(
-            String actorId,
-            String actorName,
-            String actorRelation) {
+            @Min(1) int bonusStars) {
     }
 
     public record RewardView(
@@ -305,35 +304,23 @@ public final class ApiModels {
 
     public record CreateRewardRequest(
             @NotBlank @Size(max = 80) String name,
-            @NotBlank String icon,
+            @NotBlank @Size(max = 12) String icon,
             @Min(1) int requiredStars,
-            @NotBlank String category,
-            String actorId,
-            String actorName,
-            String actorRelation) {
+            @NotBlank String category) {
     }
 
-    public record RedeemRewardRequest(
-            @NotBlank String studentId,
-            String actorId,
-            String actorName,
-            String actorRelation) {
+    public record RedeemRewardRequest(@NotBlank String studentId) {
     }
 
-    public record ReviewRewardRequest(
-            @NotNull Boolean approved,
-            String actorId,
-            String actorName,
-            String actorRelation) {
+    public record ReviewRewardRequest(@NotNull Boolean approved) {
     }
 
-    public record EquipSkinRequest(
-            @NotBlank String studentId,
-            String actorId,
-            String actorName,
-            String actorRelation) {
+    public record EquipSkinRequest(@NotBlank String studentId) {
     }
 
-    public record ApiMessage(String message) {
+    public record ApiMessage(String message, String requestId) {
+        public ApiMessage(String message) {
+            this(message, MDC.get("requestId"));
+        }
     }
 }

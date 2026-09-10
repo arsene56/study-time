@@ -1,15 +1,14 @@
 package com.studytime.api;
 
-import com.studytime.api.ApiModels.ActorRequest;
 import com.studytime.api.ApiModels.ActivityView;
 import com.studytime.api.ApiModels.AddWeeklyCommentRequest;
 import com.studytime.api.ApiModels.CompletePlanItemRequest;
-import com.studytime.api.ApiModels.ClaimWeeklyBonusRequest;
 import com.studytime.api.ApiModels.CreatePlanRequest;
 import com.studytime.api.ApiModels.CreateRewardRequest;
 import com.studytime.api.ApiModels.DemoContextView;
 import com.studytime.api.ApiModels.EquipSkinRequest;
 import com.studytime.api.ApiModels.HomeworkBatchView;
+import com.studytime.api.ApiModels.NotificationFeedView;
 import com.studytime.api.ApiModels.OverrunDecisionRequest;
 import com.studytime.api.ApiModels.PlanView;
 import com.studytime.api.ApiModels.PersonalizationProfileView;
@@ -25,6 +24,8 @@ import com.studytime.domain.StudyTimeRepository;
 import com.studytime.growth.GrowthService;
 import com.studytime.homework.HomeworkService;
 import com.studytime.homework.PlanExecutionService;
+import com.studytime.notification.NotificationService;
+import com.studytime.security.AccessControlService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -49,16 +50,22 @@ public class StudyTimeController {
     private final PlanExecutionService executionService;
     private final GrowthService growthService;
     private final StudyTimeRepository repository;
+    private final NotificationService notificationService;
+    private final AccessControlService accessControl;
 
     public StudyTimeController(
             HomeworkService homeworkService,
             PlanExecutionService executionService,
             GrowthService growthService,
-            StudyTimeRepository repository) {
+            StudyTimeRepository repository,
+            NotificationService notificationService,
+            AccessControlService accessControl) {
         this.homeworkService = homeworkService;
         this.executionService = executionService;
         this.growthService = growthService;
         this.repository = repository;
+        this.notificationService = notificationService;
+        this.accessControl = accessControl;
     }
 
     @GetMapping("/demo/context")
@@ -126,15 +133,30 @@ public class StudyTimeController {
 
     @GetMapping("/students/{studentId}/activities")
     public List<ActivityView> activities(@PathVariable String studentId) {
-        repository.requireStudent(studentId);
+        accessControl.requireStudentAccess(repository.requireStudent(studentId));
         return repository.findActivities(studentId);
     }
 
+    @GetMapping("/notifications")
+    public NotificationFeedView notifications(
+            @RequestParam(defaultValue = "false") boolean unreadOnly,
+            @RequestParam(required = false) Integer limit) {
+        return notificationService.feed(unreadOnly, limit);
+    }
+
+    @PostMapping("/notifications/{notificationId}/read")
+    public NotificationFeedView markNotificationRead(@PathVariable String notificationId) {
+        return notificationService.markRead(notificationId);
+    }
+
+    @PostMapping("/notifications/read-all")
+    public NotificationFeedView markAllNotificationsRead() {
+        return notificationService.markAllRead();
+    }
+
     @PostMapping("/plan-items/{itemId}/start")
-    public PlanView startPlanItem(
-            @PathVariable String itemId,
-            @RequestBody(required = false) ActorRequest request) {
-        return executionService.startItem(itemId, request);
+    public PlanView startPlanItem(@PathVariable String itemId) {
+        return executionService.startItem(itemId);
     }
 
     @PostMapping("/plan-items/{itemId}/complete")
@@ -180,10 +202,8 @@ public class StudyTimeController {
     }
 
     @PostMapping("/students/{studentId}/weekly-bonus/claim")
-    public WeeklyReportView claimWeeklyBonus(
-            @PathVariable String studentId,
-            @RequestBody(required = false) ClaimWeeklyBonusRequest request) {
-        return growthService.claimWeeklyBonus(studentId, request);
+    public WeeklyReportView claimWeeklyBonus(@PathVariable String studentId) {
+        return growthService.claimWeeklyBonus(studentId);
     }
 
     @GetMapping("/families/{familyId}/rewards")

@@ -139,6 +139,23 @@ export type Activity = {
   createdAt: string;
 };
 
+export type Notification = {
+  id: string;
+  studentId: string;
+  studentName: string;
+  eventType: string;
+  title: string;
+  message: string;
+  actionPath: string | null;
+  read: boolean;
+  createdAt: string;
+};
+
+export type NotificationFeed = {
+  unreadCount: number;
+  items: Notification[];
+};
+
 export type SubjectSummary = {
   subject: string;
   completedTasks: number;

@@ -3,6 +3,7 @@ import Taro, { useDidShow } from '@tarojs/taro';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   gradeLabel, type Activity, type DemoContext, type HomeworkBatch, type RealtimeEvent,
+  type NotificationFeed,
   type PersonalizationProfile, type RecognitionCapability, type RecognizedTask,
   type RewardStore, type TodayPlan, type WeeklyReport,
 } from '@study-time/shared';
@@ -10,9 +11,9 @@ import didiMascot from '../../assets/didi-mascot.png';
 import './index.css';
 
 const apiBase = process.env.TARO_ENV === 'h5' ? '' : 'http://127.0.0.1:8080';
-type Tab = 'homework' | 'plan' | 'profile' | 'growth' | 'rewards';
+const demoParentToken = 'study-time-demo-parent-mom-v1';
+type Tab = 'homework' | 'plan' | 'profile' | 'growth' | 'rewards' | 'notifications';
 type TaskDraft = Pick<RecognizedTask, 'subject' | 'title' | 'taskType' | 'difficulty' | 'eyeLoad'> & { estimatedMinutes: string };
-const parentActor = { actorId: 'demo-parent-mom', actorName: '林妈妈', actorRelation: '妈妈' };
 
 function draftsFromBatch(batch: HomeworkBatch) {
   return Object.fromEntries(batch.tasks.map((task) => [task.id, {
@@ -37,7 +38,11 @@ function currentMonday(offsetWeeks: number) {
 }
 
 async function request<T>(options: Taro.request.Option): Promise<T> {
-  const response = await Taro.request<T>({ ...options, url: `${apiBase}${options.url}` });
+  const response = await Taro.request<T>({
+    ...options,
+    url: `${apiBase}${options.url}`,
+    header: { Authorization: `Bearer ${demoParentToken}`, ...options.header },
+  });
   if (response.statusCode < 200 || response.statusCode >= 300) {
     const data = response.data as { message?: string };
     throw new Error(data?.message ?? `请求失败（${response.statusCode}）`);
@@ -55,6 +60,7 @@ export default function ParentHome() {
   const [rewards, setRewards] = useState<RewardStore | null>(null);
   const [profile, setProfile] = useState<PersonalizationProfile | null>(null);
   const [capability, setCapability] = useState<RecognitionCapability | null>(null);
+  const [notifications, setNotifications] = useState<NotificationFeed>({ unreadCount: 0, items: [] });
   const [taskDrafts, setTaskDrafts] = useState<Record<string, TaskDraft>>({});
   const [tab, setTab] = useState<Tab>('homework');
   const [photoPath, setPhotoPath] = useState('');
@@ -79,13 +85,14 @@ export default function ParentHome() {
     try {
       const contextData = context ?? await request<DemoContext>({ url: '/api/v1/demo/context', method: 'GET' });
       setContext(contextData);
-      const [planResult, activityResult, weeklyResult, rewardResult, profileResult, capabilityResult] = await Promise.allSettled([
+      const [planResult, activityResult, weeklyResult, rewardResult, profileResult, capabilityResult, notificationResult] = await Promise.allSettled([
         request<TodayPlan>({ url: `/api/v1/students/${studentId}/today-plan`, method: 'GET' }),
         request<Activity[]>({ url: `/api/v1/students/${studentId}/activities`, method: 'GET' }),
         request<WeeklyReport>({ url: `/api/v1/students/${studentId}/weekly-report?weekStart=${currentMonday(weekOffset)}`, method: 'GET' }),
         request<RewardStore>({ url: `/api/v1/families/${contextData.familyId}/rewards?studentId=${studentId}`, method: 'GET' }),
         request<PersonalizationProfile>({ url: `/api/v1/students/${studentId}/personalization-profile`, method: 'GET' }),
         request<RecognitionCapability>({ url: '/api/v1/recognition-capabilities', method: 'GET' }),
+        request<NotificationFeed>({ url: '/api/v1/notifications', method: 'GET' }),
       ]);
       setPlan(planResult.status === 'fulfilled' ? planResult.value : null);
       setActivities(activityResult.status === 'fulfilled' ? activityResult.value : []);
@@ -98,6 +105,7 @@ export default function ParentHome() {
       setRewards(rewardResult.status === 'fulfilled' ? rewardResult.value : null);
       setProfile(profileResult.status === 'fulfilled' ? profileResult.value : null);
       setCapability(capabilityResult.status === 'fulfilled' ? capabilityResult.value : null);
+      if (notificationResult.status === 'fulfilled') setNotifications(notificationResult.value);
       if (!quiet) setNotice('学生端计划、进度与成长数据已同步');
     } catch (error) {
       setNotice(error instanceof Error ? error.message : '暂时无法连接服务');
@@ -112,7 +120,9 @@ export default function ParentHome() {
     let cancelled = false;
     let socket: Awaited<ReturnType<typeof Taro.connectSocket>> | undefined;
     const connect = async () => {
-      socket = await Taro.connectSocket({ url: `${wsBase}/ws/updates?studentId=${studentId}` });
+      socket = await Taro.connectSocket({
+        url: `${wsBase}/ws/updates?studentId=${studentId}&accessToken=${encodeURIComponent(demoParentToken)}`,
+      });
       if (cancelled) { socket.close({}); return; }
       socket.onMessage((event) => {
         const update = JSON.parse(event.data as string) as RealtimeEvent;
@@ -136,7 +146,12 @@ export default function ParentHome() {
     try {
       let recognized: HomeworkBatch;
       if (photoPath) {
-        const response = await Taro.uploadFile({ url: `${apiBase}/api/v1/homework-batches/recognize?studentId=${studentId}`, filePath: photoPath, name: 'file' });
+        const response = await Taro.uploadFile({
+          url: `${apiBase}/api/v1/homework-batches/recognize?studentId=${studentId}`,
+          filePath: photoPath,
+          name: 'file',
+          header: { Authorization: `Bearer ${demoParentToken}` },
+        });
         if (response.statusCode < 200 || response.statusCode >= 300) throw new Error('照片上传失败');
         recognized = JSON.parse(response.data) as HomeworkBatch;
       } else {
@@ -218,7 +233,7 @@ export default function ParentHome() {
     try {
       const updated = await request<TodayPlan>({
         url: `/api/v1/plans/${plan.id}/reorder`, method: 'POST', header: { 'Content-Type': 'application/json' },
-        data: { ...parentActor, orderedItemIds: ordered.map((item) => item.id) },
+        data: { orderedItemIds: ordered.map((item) => item.id) },
       });
       setPlan(updated); setNotice('计划顺序已调整，学生端会实时看到由妈妈调整');
     } catch (error) { setNotice(error instanceof Error ? error.message : '调整失败'); }
@@ -231,7 +246,7 @@ export default function ParentHome() {
     try {
       const updated = await request<WeeklyReport>({
         url: `/api/v1/students/${studentId}/weekly-comments`, method: 'POST', header: { 'Content-Type': 'application/json' },
-        data: { ...parentActor, content: comment.trim(), weekStart: weekly?.weekStart },
+        data: { content: comment.trim(), weekStart: weekly?.weekStart },
       });
       setWeekly(updated); setComment(''); setNotice('鼓励已写入家庭鼓励墙');
     } catch (error) { setNotice(error instanceof Error ? error.message : '点评保存失败'); }
@@ -249,7 +264,7 @@ export default function ParentHome() {
     try {
       const updated = await request<WeeklyReport>({
         url: `/api/v1/students/${studentId}/weekly-goal`, method: 'POST', header: { 'Content-Type': 'application/json' },
-        data: { ...parentActor, targetTasks, targetFocusMinutes, bonusStars },
+        data: { targetTasks, targetFocusMinutes, bonusStars },
       });
       setWeekly(updated); setNotice('本周成长目标已同步到学生端');
     } catch (error) { setNotice(error instanceof Error ? error.message : '周目标保存失败'); }
@@ -264,7 +279,7 @@ export default function ParentHome() {
     try {
       const updated = await request<RewardStore>({
         url: `/api/v1/families/${context.familyId}/rewards?studentId=${studentId}`, method: 'POST', header: { 'Content-Type': 'application/json' },
-        data: { ...parentActor, name: rewardName.trim(), icon: '🎁', requiredStars: stars, category: 'WISH' },
+        data: { name: rewardName.trim(), icon: '🎁', requiredStars: stars, category: 'WISH' },
       });
       setRewards(updated); setRewardName(''); setNotice('家庭自定义奖励已添加');
     } catch (error) { setNotice(error instanceof Error ? error.message : '奖励设置失败'); }
@@ -275,11 +290,27 @@ export default function ParentHome() {
     setBusy(true);
     try {
       const updated = await request<RewardStore>({
-        url: `/api/v1/reward-redemptions/${redemptionId}/review`, method: 'POST', header: { 'Content-Type': 'application/json' }, data: { ...parentActor, approved },
+        url: `/api/v1/reward-redemptions/${redemptionId}/review`, method: 'POST', header: { 'Content-Type': 'application/json' }, data: { approved },
       });
       setRewards(updated); setNotice(approved ? '已批准奖励，星星结算完成' : '已暂缓这次奖励申请');
     } catch (error) { setNotice(error instanceof Error ? error.message : '审批失败'); }
     finally { setBusy(false); }
+  };
+
+  const markNotificationRead = async (notificationId: string) => {
+    try {
+      const updated = await request<NotificationFeed>({
+        url: `/api/v1/notifications/${notificationId}/read`, method: 'POST',
+      });
+      setNotifications(updated);
+    } catch (error) { setNotice(error instanceof Error ? error.message : '通知状态更新失败'); }
+  };
+
+  const markAllNotificationsRead = async () => {
+    try {
+      const updated = await request<NotificationFeed>({ url: '/api/v1/notifications/read-all', method: 'POST' });
+      setNotifications(updated); setNotice('重要通知已全部标记为已读');
+    } catch (error) { setNotice(error instanceof Error ? error.message : '通知状态更新失败'); }
   };
 
   return (
@@ -287,7 +318,7 @@ export default function ParentHome() {
       <View className="hero"><View><Text className="brand">作业时光 · 家长端</Text><Text className="heroTitle">晚上好，林妈妈</Text><Text className="subtitle">自主规划，快乐成长</Text></View><Image className="didi" src={didiMascot} mode="aspectFit" /></View>
       <View className="notice"><Text>{notice}</Text></View>
       <View className="studentTabs">{context?.students.map((item) => <Button key={item.id} className={`studentTab ${item.id === studentId ? 'active' : ''}`} onClick={() => { setStudentId(item.id); setBatch(null); setTaskDrafts({}); }}><Text className="avatar">{item.name.slice(-1)}</Text><View><Text className="studentName">{item.name}</Text><Text className="studentGrade">{gradeLabel(item.grade)}</Text></View></Button>)}</View>
-      <View className="mainTabs">{([['homework','录入'],['plan','计划'],['profile','个性化'],['growth','周报'],['rewards','奖励']] as [Tab,string][]).map(([id,label]) => <Button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</Button>)}</View>
+      <View className="mainTabs">{([['homework','录入'],['plan','计划'],['profile','个性化'],['growth','周报'],['rewards','奖励'],['notifications',notifications.unreadCount ? `通知 ${notifications.unreadCount}` : '通知']] as [Tab,string][]).map(([id,label]) => <Button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</Button>)}</View>
 
       {tab === 'homework' && <>
         <View className="card uploadCard">
@@ -355,6 +386,11 @@ export default function ParentHome() {
         <Text className="sectionLabel">设置家庭自定义奖励</Text><View className="rewardForm"><Input value={rewardName} placeholder="奖励名称" maxlength={80} onInput={(event) => setRewardName(event.detail.value)} /><Input value={rewardStars} type="number" placeholder="星星" onInput={(event) => setRewardStars(event.detail.value)} /><Button disabled={busy} onClick={() => void createReward()}>添加奖励</Button></View>
         <Text className="sectionLabel">奖励申请记录</Text><View className="historyList">{rewards?.redemptions.map((item) => <View key={item.id}><Text className="historyIcon">{item.rewardIcon}</Text><View><Text className="historyTitle">{item.rewardName}</Text><Text className="historyMeta">{item.requestedByName}申请 · {item.requestedAt}</Text></View><Text className={`historyStatus status-${item.status.toLowerCase()}`}>{item.status === 'REQUESTED' ? '待审批' : item.status === 'APPROVED' ? '已批准' : '已暂缓'}</Text></View>)}</View>
         <Text className="sectionLabel">星星账本</Text><View className="historyList">{rewards?.starTransactions.map((item) => <View key={item.id}><Text className="historyIcon">{item.amount > 0 ? '⭐' : '🎁'}</Text><View><Text className="historyTitle">{item.reason}</Text><Text className="historyMeta">{item.createdAt}</Text></View><Text className={item.amount > 0 ? 'starPlus' : 'starMinus'}>{item.amount > 0 ? '+' : ''}{item.amount}</Text></View>)}</View>
+      </View>}
+
+      {tab === 'notifications' && <View className="card">
+        <View className="cardHead"><View><Text className="step">只提醒关键节点</Text><Text className="cardTitle">重要通知</Text></View>{notifications.unreadCount > 0 && <Button className="readAllButton" onClick={() => void markAllNotificationsRead()}>全部已读</Button>}</View>
+        <View className="notificationList">{notifications.items.length ? notifications.items.map((item) => <View className={`notificationItem ${item.read ? 'read' : ''}`} key={item.id} onClick={() => { if (!item.read) void markNotificationRead(item.id); }}><Text className="notificationIcon">{item.eventType.includes('REWARD') ? '🎁' : item.eventType.includes('OVERRUN') || item.eventType.includes('CHANGE') ? '⏰' : '✨'}</Text><View><Text className="notificationTitle">{item.title}{!item.read ? ' · 新' : ''}</Text><Text className="notificationText">{item.message}</Text><Text className="notificationTime">{item.studentName} · {item.createdAt}</Text></View></View>) : <View className="emptyCard"><Text>暂时没有重要通知。普通进度会安静地保持同步。</Text></View>}</View>
       </View>}
     </ScrollView>
   );

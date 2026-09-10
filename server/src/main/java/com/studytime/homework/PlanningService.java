@@ -5,6 +5,8 @@ import com.studytime.domain.StudyTimeRepository;
 import com.studytime.domain.StudyTimeRepository.StudentRow;
 import com.studytime.domain.StudyTimeRepository.PlanItemRow;
 import com.studytime.domain.StudyTimeRepository.TaskRow;
+import com.studytime.security.AccessControlService;
+import com.studytime.security.MemberPrincipal;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,9 +21,11 @@ import java.util.UUID;
 @Service
 public class PlanningService {
     private final StudyTimeRepository repository;
+    private final AccessControlService accessControl;
 
-    public PlanningService(StudyTimeRepository repository) {
+    public PlanningService(StudyTimeRepository repository, AccessControlService accessControl) {
         this.repository = repository;
+        this.accessControl = accessControl;
     }
 
     @Transactional
@@ -31,6 +35,7 @@ public class PlanningService {
             throw new IllegalArgumentException("该批次没有可排期的作业");
         }
         StudentRow student = repository.requireStudent(tasks.getFirst().studentId());
+        MemberPrincipal member = accessControl.requireParentAccess(student);
         List<TaskRow> orderedTasks = orderTasks(tasks);
         List<ItemDraft> drafts = addHealthyBreaks(orderedTasks, student.grade());
         drafts.add(new ItemDraft(null, "ROUTINE", "整理", "检查作业并整理书包", "整理", "🎒", 10));
@@ -54,7 +59,8 @@ public class PlanningService {
         }
         repository.confirmBatch(batchId);
         repository.insertActivity(
-                UUID.randomUUID().toString(), student.familyId(), student.id(), "demo-parent-mom", "林妈妈", "妈妈",
+                UUID.randomUUID().toString(), student.familyId(), student.id(),
+                member.memberId(), member.displayName(), member.relationName(),
                 "PLAN_CREATED", "确认了识别结果，嘀嘀已生成今天的作业计划");
         return repository.findTodayPlan(student.id()).orElseThrow();
     }

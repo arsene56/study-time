@@ -124,12 +124,13 @@ public class StudyTimeRepository {
             String objectKey,
             String recognitionMode,
             String status,
-            String ocrProvider) {
+            String ocrProvider,
+            String createdBy) {
         jdbc.sql("""
                         INSERT INTO homework_batches
                         (id, family_id, student_id, source_object_key, recognition_mode, status, created_by, ocr_provider)
                         VALUES (:id, :familyId, :studentId, :objectKey, :recognitionMode, :status,
-                                'demo-parent-mom', :ocrProvider)
+                                :createdBy, :ocrProvider)
                         """)
                 .param("id", id)
                 .param("familyId", student.familyId())
@@ -137,6 +138,7 @@ public class StudyTimeRepository {
                 .param("objectKey", objectKey)
                 .param("recognitionMode", recognitionMode)
                 .param("status", status)
+                .param("createdBy", createdBy)
                 .param("ocrProvider", ocrProvider)
                 .update();
     }

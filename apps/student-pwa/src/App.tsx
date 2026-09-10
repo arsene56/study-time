@@ -1,18 +1,21 @@
 import {
-  ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Flame, Gift,
+  ArrowDown, ArrowUp, Bell, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Flame, Gift,
   History, Pause, Play, RefreshCw, Sparkles, Star, Trophy, WalletCards,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import {
   demoStudentId, gradeLabel, type DemoContext, type PlanItem, type RealtimeEvent,
-  type RewardStore, type TodayPlan, type WeeklyReport,
+  type NotificationFeed, type RewardStore, type TodayPlan, type WeeklyReport,
 } from '@study-time/shared';
 
 const apiBase = import.meta.env.VITE_API_BASE ?? '';
 const pageParams = new URLSearchParams(window.location.search);
 const hasUnsupportedQuery = Array.from(pageParams.keys()).some((key) => key !== 'studentId');
 const selectedStudentId = pageParams.get('studentId') ?? demoStudentId;
-type Tab = 'plan' | 'growth' | 'rewards';
+const demoStudentToken = selectedStudentId === 'demo-student-keke'
+  ? 'study-time-demo-student-keke-v1'
+  : 'study-time-demo-student-xiaoman-v1';
+type Tab = 'plan' | 'growth' | 'rewards' | 'notifications';
 type RewardFilter = 'ALL' | 'SKIN' | 'WISH';
 type RewardPanel = 'STORE' | 'HISTORY' | 'LEDGER';
 
@@ -25,7 +28,9 @@ function currentMonday(offsetWeeks: number) {
 }
 
 async function readJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${apiBase}${path}`, init);
+  const headers = new Headers(init?.headers);
+  headers.set('Authorization', `Bearer ${demoStudentToken}`);
+  const response = await fetch(`${apiBase}${path}`, { ...init, headers });
   if (!response.ok) {
     const error = (await response.json().catch(() => null)) as { message?: string } | null;
     throw new Error(error?.message ?? `请求失败（${response.status}）`);
@@ -37,14 +42,6 @@ function taskTone(item: PlanItem) {
   if (item.kind === 'BREAK') return 'break';
   if (item.kind === 'ROUTINE') return 'routine';
   return 'homework';
-}
-
-function actor(studentName?: string) {
-  return {
-    actorId: selectedStudentId.replace('demo-student-', 'demo-student-member-'),
-    actorName: studentName ?? '小满',
-    actorRelation: '学生',
-  };
 }
 
 function elapsedSeconds(item: PlanItem, now: number) {
@@ -82,6 +79,7 @@ function StudentApp() {
   const [plan, setPlan] = useState<TodayPlan | null>(null);
   const [weekly, setWeekly] = useState<WeeklyReport | null>(null);
   const [rewards, setRewards] = useState<RewardStore | null>(null);
+  const [notifications, setNotifications] = useState<NotificationFeed>({ unreadCount: 0, items: [] });
   const [tab, setTab] = useState<Tab>('plan');
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -98,14 +96,16 @@ function StudentApp() {
     try {
       const contextData = await readJson<DemoContext>('/api/v1/demo/context');
       setContext(contextData);
-      const [planResult, weeklyResult, rewardResult] = await Promise.allSettled([
+      const [planResult, weeklyResult, rewardResult, notificationResult] = await Promise.allSettled([
         readJson<TodayPlan>(`/api/v1/students/${selectedStudentId}/today-plan`),
         readJson<WeeklyReport>(`/api/v1/students/${selectedStudentId}/weekly-report?weekStart=${currentMonday(weekOffset)}`),
         readJson<RewardStore>(`/api/v1/families/${contextData.familyId}/rewards?studentId=${selectedStudentId}`),
+        readJson<NotificationFeed>('/api/v1/notifications'),
       ]);
       setPlan(planResult.status === 'fulfilled' ? planResult.value : null);
       setWeekly(weeklyResult.status === 'fulfilled' ? weeklyResult.value : null);
       setRewards(rewardResult.status === 'fulfilled' ? rewardResult.value : null);
+      if (notificationResult.status === 'fulfilled') setNotifications(notificationResult.value);
       setMessage('计划已和家长端实时同步');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '暂时无法连接嘀嘀');
@@ -127,7 +127,7 @@ function StudentApp() {
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = apiBase ? new URL(apiBase).host : window.location.host;
-    const socket = new WebSocket(`${protocol}//${host}/ws/updates?studentId=${selectedStudentId}`);
+    const socket = new WebSocket(`${protocol}//${host}/ws/updates?studentId=${selectedStudentId}&accessToken=${encodeURIComponent(demoStudentToken)}`);
     socket.onmessage = (event) => {
       const update = JSON.parse(event.data) as RealtimeEvent;
       if (update.studentId === selectedStudentId) void loadDashboard(true);
@@ -163,13 +163,13 @@ function StudentApp() {
   };
 
   const start = (item: PlanItem) => mutatePlan(
-    `/api/v1/plan-items/${item.id}/start`, actor(student?.name), `“${item.title}”开始计时，加油！`,
+    `/api/v1/plan-items/${item.id}/start`, {}, `“${item.title}”开始计时，加油！`,
   );
 
   const complete = async (item: PlanItem) => {
     const updated = await mutatePlan(
       `/api/v1/plan-items/${item.id}/complete`,
-      { ...actor(student?.name), actualSeconds: elapsedSeconds(item, now) },
+      { actualSeconds: elapsedSeconds(item, now) },
       item.kind === 'BREAK' ? '休息完成，眼睛也充好电啦' : '完成一项！嘀嘀为你点亮了星星',
     );
     if (updated?.items.every((task) => task.status === 'DONE' || task.status === 'SKIPPED')) {
@@ -181,7 +181,7 @@ function StudentApp() {
 
   const decide = (item: PlanItem, decision: 'SKIP' | 'CONTINUE') => mutatePlan(
     `/api/v1/plan-items/${item.id}/overrun-decision`,
-    { ...actor(student?.name), decision, actualSeconds: elapsedSeconds(item, now), extraMinutes: 10 },
+    { decision, actualSeconds: elapsedSeconds(item, now), extraMinutes: 10 },
     decision === 'SKIP' ? '已暂时跳过，嘀嘀重新安排了后面的任务' : '继续挑战 10 分钟，后续时间已自动更新',
   );
 
@@ -193,7 +193,7 @@ function StudentApp() {
     [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
     await mutatePlan(
       `/api/v1/plans/${plan.id}/reorder`,
-      { ...actor(student?.name), orderedItemIds: ordered.map((item) => item.id) },
+      { orderedItemIds: ordered.map((item) => item.id) },
       '顺序已调整，家长端也能看到这次变化',
     );
   };
@@ -204,7 +204,7 @@ function StudentApp() {
     try {
       const updated = await readJson<WeeklyReport>(`/api/v1/students/${selectedStudentId}/weekly-comments`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...actor(student?.name), content: comment.trim(), weekStart: weekly?.weekStart }),
+        body: JSON.stringify({ content: comment.trim(), weekStart: weekly?.weekStart }),
       });
       setWeekly(updated);
       setComment('');
@@ -221,7 +221,7 @@ function StudentApp() {
     try {
       const updated = await readJson<RewardStore>(`/api/v1/rewards/${rewardId}/redeem`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId: selectedStudentId, ...actor(student?.name) }),
+        body: JSON.stringify({ studentId: selectedStudentId }),
       });
       setRewards(updated);
       setMessage(`“${rewardName}”已发给家长审批`);
@@ -236,7 +236,7 @@ function StudentApp() {
     setBusyId('weekly-bonus');
     try {
       const updated = await readJson<WeeklyReport>(`/api/v1/students/${selectedStudentId}/weekly-bonus/claim`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(actor(student?.name)),
+        method: 'POST',
       });
       setWeekly(updated);
       setCelebration({ title: '成长目标达成！', detail: '嘀嘀的专属闪光已点亮，奖励星星也到账啦' });
@@ -255,7 +255,7 @@ function StudentApp() {
     try {
       const updated = await readJson<RewardStore>(`/api/v1/rewards/${rewardId}/equip`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId: selectedStudentId, ...actor(student?.name) }),
+        body: JSON.stringify({ studentId: selectedStudentId }),
       });
       setRewards(updated);
       setMessage(`嘀嘀已经换上“${rewardName}”`);
@@ -263,6 +263,23 @@ function StudentApp() {
       setMessage(error instanceof Error ? error.message : '皮肤暂时无法使用');
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const markNotificationRead = async (notificationId: string) => {
+    try {
+      setNotifications(await readJson<NotificationFeed>(`/api/v1/notifications/${notificationId}/read`, { method: 'POST' }));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '通知状态更新失败');
+    }
+  };
+
+  const markAllNotificationsRead = async () => {
+    try {
+      setNotifications(await readJson<NotificationFeed>('/api/v1/notifications/read-all', { method: 'POST' }));
+      setMessage('重要通知已经全部看过啦');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '通知状态更新失败');
     }
   };
 
@@ -298,7 +315,15 @@ function StudentApp() {
         <button className={tab === 'plan' ? 'active' : ''} onClick={() => setTab('plan')}><Clock3 />今日计划</button>
         <button className={tab === 'growth' ? 'active' : ''} onClick={() => setTab('growth')}><Trophy />成长周报</button>
         <button className={tab === 'rewards' ? 'active' : ''} onClick={() => setTab('rewards')}><Gift />星星奖励</button>
+        <button className={tab === 'notifications' ? 'active' : ''} onClick={() => setTab('notifications')}><Bell />重要通知{notifications.unreadCount > 0 && <em className="notice-count">{notifications.unreadCount}</em>}</button>
       </nav>
+
+      {tab === 'notifications' && (
+        <section className="content-section">
+          <div className="section-heading"><div><p>只提醒真正重要的事</p><h2>重要通知</h2></div>{notifications.unreadCount > 0 && <button className="read-all" onClick={() => void markAllNotificationsRead()}>全部已读</button>}</div>
+          <div className="notification-list">{notifications.items.length ? notifications.items.map((item) => <button type="button" className={item.read ? 'read' : ''} key={item.id} onClick={() => { if (!item.read) void markNotificationRead(item.id); }}><span>{item.eventType.includes('REWARD') ? '🎁' : item.eventType.includes('OVERRUN') || item.eventType.includes('CHANGE') ? '⏰' : '✨'}</span><div><h3>{item.title}{!item.read && <em>新</em>}</h3><p>{item.message}</p><small>{item.createdAt}</small></div></button>) : <div className="empty-card"><div className="empty-icon">🔔</div><h3>现在很安静</h3><p>奖励审批等重要结果会出现在这里，普通进度不会频繁打扰。</p></div>}</div>
+        </section>
+      )}
 
       {tab === 'plan' && (
         <section className="plan-section">

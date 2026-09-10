@@ -2,6 +2,7 @@ package com.studytime.homework;
 
 import com.studytime.domain.StudyTimeRepository;
 import com.studytime.domain.StudyTimeRepository.TaskRow;
+import com.studytime.security.AccessControlService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -13,7 +14,8 @@ class PlanningServiceTest {
 
     @Test
     void ordersWarmupBeforeChallengeAndKeepsEasyFinish() {
-        PlanningService service = new PlanningService(mock(StudyTimeRepository.class));
+        PlanningService service = new PlanningService(
+                mock(StudyTimeRepository.class), mock(AccessControlService.class));
         List<TaskRow> ordered = service.orderTasks(List.of(
                 task("math", 30, "CHALLENGE", 1),
                 task("english", 15, "EASY", 2),

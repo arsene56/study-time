@@ -1,6 +1,5 @@
 package com.studytime.homework;
 
-import com.studytime.api.ApiModels.ActorRequest;
 import com.studytime.api.ApiModels.CompletePlanItemRequest;
 import com.studytime.api.ApiModels.OverrunDecisionRequest;
 import com.studytime.api.ApiModels.PlanView;
@@ -9,7 +8,10 @@ import com.studytime.domain.StudyTimeRepository;
 import com.studytime.domain.StudyTimeRepository.StudentRow;
 import com.studytime.domain.StudyTimeRepository.PlanItemRow;
 import com.studytime.domain.StudyTimeRepository.PlanRow;
+import com.studytime.notification.NotificationService;
 import com.studytime.realtime.PlanUpdateWebSocketHandler;
+import com.studytime.security.AccessControlService;
+import com.studytime.security.MemberPrincipal;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,17 +29,26 @@ import java.util.UUID;
 public class PlanExecutionService {
     private final StudyTimeRepository repository;
     private final PlanUpdateWebSocketHandler updates;
+    private final AccessControlService accessControl;
+    private final NotificationService notifications;
 
-    public PlanExecutionService(StudyTimeRepository repository, PlanUpdateWebSocketHandler updates) {
+    public PlanExecutionService(
+            StudyTimeRepository repository,
+            PlanUpdateWebSocketHandler updates,
+            AccessControlService accessControl,
+            NotificationService notifications) {
         this.repository = repository;
         this.updates = updates;
+        this.accessControl = accessControl;
+        this.notifications = notifications;
     }
 
     @Transactional
-    public PlanView startItem(String itemId, ActorRequest request) {
+    public PlanView startItem(String itemId) {
         PlanItemRow item = repository.requirePlanItemForUpdate(itemId);
         PlanRow plan = repository.requirePlanForUpdate(item.planId());
         StudentRow student = repository.requireStudent(plan.studentId());
+        MemberPrincipal member = accessControl.requireStudentAccess(student);
         if ("PENDING".equals(item.status())) {
             boolean anotherTaskIsActive = repository.findPlanItemRows(plan.id()).stream()
                     .anyMatch(other -> !other.id().equals(item.id()) && "ACTIVE".equals(other.status()));
@@ -47,10 +58,7 @@ public class PlanExecutionService {
             repository.startPlanItem(itemId);
             repository.updatePlanSummary(plan.id(), plan.plannedEndTime(), "IN_PROGRESS",
                     repository.scheduleWarning(student, plan.plannedEndTime(), plan.bedtimeBufferMinutes()));
-            Actor actor = studentActor(student, request == null ? null : request.actorId(),
-                    request == null ? null : request.actorName(),
-                    request == null ? null : request.actorRelation());
-            log(student, actor, "TASK_STARTED", "开始了“" + item.title() + "”");
+            log(student, member, "TASK_STARTED", "开始了“" + item.title() + "”");
         }
         PlanView result = repository.findTodayPlan(student.id()).orElseThrow();
         updates.publish(student.id(), "TASK_STARTED");
@@ -62,22 +70,34 @@ public class PlanExecutionService {
         PlanItemRow item = repository.requirePlanItemForUpdate(itemId);
         PlanRow plan = repository.requirePlanForUpdate(item.planId());
         StudentRow student = repository.requireStudent(plan.studentId());
+        MemberPrincipal member = accessControl.requireStudentAccess(student);
         if (!"DONE".equals(item.status()) && !"SKIPPED".equals(item.status())) {
             int actualSeconds = actualSeconds(item, request == null ? null : request.actualSeconds());
             repository.completePlanItem(item, actualSeconds);
             int stars = "BREAK".equals(item.kind()) ? 1 : 5;
             repository.addStars(student.id(), stars);
             repository.insertStarTransaction(student.id(), stars, "完成“" + item.title() + "”", item.id());
-            Actor actor = studentActor(student, request == null ? null : request.actorId(),
-                    request == null ? null : request.actorName(),
-                    request == null ? null : request.actorRelation());
             LocalTime oldEnd = plan.plannedEndTime();
             PlanView rescheduled = reschedule(plan, student);
-            String changed = oldEnd.equals(LocalTime.parse(rescheduled.plannedEndTime()))
+            LocalTime newEnd = LocalTime.parse(rescheduled.plannedEndTime());
+            String changed = oldEnd.equals(newEnd)
                     ? ""
                     : "，预计完成时间由 " + oldEnd + " 调整为 " + rescheduled.plannedEndTime();
-            log(student, actor, "TASK_COMPLETED",
+            log(student, member, "TASK_COMPLETED",
                     "完成了“" + item.title() + "”，获得 " + stars + " 颗星" + changed);
+            if ("HOMEWORK".equals(item.kind())) {
+                notifications.notifyParents(
+                        student, "TASK_COMPLETED", "完成一项作业",
+                        student.name() + "完成了“" + item.title() + "”", "/plan",
+                        "TASK_COMPLETED:" + item.id());
+            }
+            if (Math.abs(Duration.between(oldEnd, newEnd).toMinutes()) >= 15) {
+                notifications.notifyParents(
+                        student, "PLAN_MAJOR_CHANGE", "计划时间有较大变化",
+                        student.name() + "的预计完成时间由 " + oldEnd + " 调整为 " + newEnd,
+                        "/plan", "PLAN_MAJOR_CHANGE:" + plan.id() + ":" + newEnd);
+            }
+            notifyPlanCompleted(student, rescheduled);
         }
         PlanView result = repository.findTodayPlan(student.id()).orElseThrow();
         updates.publish(student.id(), "TASK_COMPLETED");
@@ -89,6 +109,7 @@ public class PlanExecutionService {
         PlanItemRow item = repository.requirePlanItemForUpdate(itemId);
         PlanRow plan = repository.requirePlanForUpdate(item.planId());
         StudentRow student = repository.requireStudent(plan.studentId());
+        MemberPrincipal member = accessControl.requireStudentAccess(student);
         String decision = request.decision().toUpperCase();
         if (!Set.of("SKIP", "CONTINUE").contains(decision)) {
             throw new IllegalArgumentException("超时选择只能是 SKIP 或 CONTINUE");
@@ -108,11 +129,16 @@ public class PlanExecutionService {
                     item, decision, "ACTIVE", actualSeconds, item.estimatedMinutes() + extraMinutes);
         }
         PlanView rescheduled = reschedule(plan, student);
-        Actor actor = studentActor(student, request.actorId(), request.actorName(), request.actorRelation());
         String action = "SKIP".equals(decision) ? "选择暂时跳过“" + item.title() + "”"
                 : "选择继续挑战“" + item.title() + "”，增加 " + extraMinutes + " 分钟";
-        log(student, actor, "PLAN_OVERRUN_DECISION",
+        log(student, member, "PLAN_OVERRUN_DECISION",
                 action + "；预计完成时间由 " + oldEnd + " 调整为 " + rescheduled.plannedEndTime());
+        notifications.notifyParents(
+                student, "PLAN_OVERRUN", "作业出现明显超时",
+                student.name() + action + "，预计完成时间由 " + oldEnd + " 调整为 "
+                        + rescheduled.plannedEndTime(),
+                "/plan", "PLAN_OVERRUN:" + item.id() + ":" + decision);
+        notifyPlanCompleted(student, rescheduled);
         updates.publish(student.id(), "PLAN_RESCHEDULED");
         return rescheduled;
     }
@@ -121,6 +147,7 @@ public class PlanExecutionService {
     public PlanView reorder(String planId, ReorderPlanRequest request) {
         PlanRow plan = repository.requirePlanForUpdate(planId);
         StudentRow student = repository.requireStudent(plan.studentId());
+        MemberPrincipal member = accessControl.requireStudentAccess(student);
         List<PlanItemRow> current = repository.findPlanItemRows(planId);
         List<String> requested = request.orderedItemIds();
         Set<String> expectedIds = current.stream().map(PlanItemRow::id).collect(java.util.stream.Collectors.toSet());
@@ -137,8 +164,7 @@ public class PlanExecutionService {
             repository.updatePlanItemSchedule(item.id(), index, item.plannedStart(), item.plannedEnd());
         }
         PlanView rescheduled = reschedule(plan, student);
-        Actor actor = studentActor(student, request.actorId(), request.actorName(), request.actorRelation());
-        log(student, actor, "PLAN_REORDERED",
+        log(student, member, "PLAN_REORDERED",
                 "调整了任务顺序，新的预计完成时间为 " + rescheduled.plannedEndTime());
         updates.publish(student.id(), "PLAN_REORDERED");
         return rescheduled;
@@ -189,23 +215,19 @@ public class PlanExecutionService {
         return item.estimatedMinutes() * 60;
     }
 
-    private Actor studentActor(StudentRow student, String actorId, String actorName, String relation) {
-        return new Actor(
-                valueOr(actorId, student.id().replace("demo-student-", "demo-student-member-")),
-                valueOr(actorName, student.name()),
-                valueOr(relation, "学生"));
+    private void notifyPlanCompleted(StudentRow student, PlanView plan) {
+        if (!"COMPLETED".equals(plan.status())) {
+            return;
+        }
+        notifications.notifyParents(
+                student, "PLAN_COMPLETED", "今天的计划全部完成",
+                student.name() + "完成了今天的全部任务，给自主规划点个赞！",
+                "/plan", "PLAN_COMPLETED:" + plan.id());
     }
 
-    private void log(StudentRow student, Actor actor, String actionType, String description) {
+    private void log(StudentRow student, MemberPrincipal actor, String actionType, String description) {
         repository.insertActivity(
                 UUID.randomUUID().toString(), student.familyId(), student.id(),
-                actor.id(), actor.name(), actor.relation(), actionType, description);
-    }
-
-    private String valueOr(String value, String fallback) {
-        return value == null || value.isBlank() ? fallback : value;
-    }
-
-    private record Actor(String id, String name, String relation) {
+                actor.memberId(), actor.displayName(), actor.relationName(), actionType, description);
     }
 }
