@@ -57,7 +57,7 @@ export default function ParentPage() {
   function closeScanWithPlan() {
     setScanOpen(false);
     setScanStage('choose');
-    showToast('嘀嘀已生成计划，并同步到孩子端');
+    showToast('嘀嘀已生成计划，并同步到学生端');
   }
 
   return (
@@ -187,7 +187,7 @@ export default function ParentPage() {
                 <section className="comment-card">
                   <div className="comment-title"><MessageCircleHeart /><strong>给孩子一句鼓励</strong><span>亲子共享</span></div>
                   <textarea value={comment} onChange={(event) => setComment(event.target.value)} maxLength={60} />
-                  <div><span>{comment.length}/60</span><button onClick={() => showToast('鼓励已送达孩子端 💚')}>送出鼓励</button></div>
+                  <div><span>{comment.length}/60</span><button onClick={() => showToast('鼓励已送达学生端 💚')}>送出鼓励</button></div>
                 </section>
                 <button className="weekly-bonus" onClick={() => showToast('已发放 10 颗周结算星星')}><Gift /><span><strong>发放本周额外奖励</strong><small>推荐：10 颗星星</small></span><Star /></button>
               </section>

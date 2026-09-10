@@ -98,7 +98,7 @@ export default function ParentHome() {
       setRewards(rewardResult.status === 'fulfilled' ? rewardResult.value : null);
       setProfile(profileResult.status === 'fulfilled' ? profileResult.value : null);
       setCapability(capabilityResult.status === 'fulfilled' ? capabilityResult.value : null);
-      if (!quiet) setNotice('孩子端计划、进度与成长数据已同步');
+      if (!quiet) setNotice('学生端计划、进度与成长数据已同步');
     } catch (error) {
       setNotice(error instanceof Error ? error.message : '暂时无法连接服务');
     }
@@ -220,7 +220,7 @@ export default function ParentHome() {
         url: `/api/v1/plans/${plan.id}/reorder`, method: 'POST', header: { 'Content-Type': 'application/json' },
         data: { ...parentActor, orderedItemIds: ordered.map((item) => item.id) },
       });
-      setPlan(updated); setNotice('计划顺序已调整，孩子端会实时看到由妈妈调整');
+      setPlan(updated); setNotice('计划顺序已调整，学生端会实时看到由妈妈调整');
     } catch (error) { setNotice(error instanceof Error ? error.message : '调整失败'); }
     finally { setBusy(false); }
   };
@@ -251,7 +251,7 @@ export default function ParentHome() {
         url: `/api/v1/children/${childId}/weekly-goal`, method: 'POST', header: { 'Content-Type': 'application/json' },
         data: { ...parentActor, targetTasks, targetFocusMinutes, bonusStars },
       });
-      setWeekly(updated); setNotice('本周成长目标已同步到孩子端');
+      setWeekly(updated); setNotice('本周成长目标已同步到学生端');
     } catch (error) { setNotice(error instanceof Error ? error.message : '周目标保存失败'); }
     finally { setBusy(false); }
   };

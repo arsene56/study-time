@@ -131,7 +131,7 @@ export default function ChildPage() {
           </header>
 
           <div className="tablet-main">
-            <nav className="tablet-sidebar" aria-label="孩子端主导航">
+            <nav className="tablet-sidebar" aria-label="学生端主导航">
               {childNav.map((item) => {
                 const Icon = item.icon;
                 return <button key={item.key} onClick={() => setTab(item.key)} className={tab === item.key ? 'active' : ''}><Icon /><span>{item.label}</span></button>;

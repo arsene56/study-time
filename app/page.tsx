@@ -42,7 +42,7 @@ export default function Home() {
               </a>
               <a className="role-card" href="/child">
                 <span className="role-icon child-role"><Sparkles /></span>
-                <span><strong>我是孩子</strong><small>认领计划 · 专注打卡 · 收集星星</small></span>
+                <span><strong>我是学生</strong><small>认领计划 · 专注打卡 · 收集星星</small></span>
                 <ArrowRight size={20} />
               </a>
             </div>

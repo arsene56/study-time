@@ -257,7 +257,7 @@ export default function App() {
     <main className="app-shell">
       <header className="hero-card">
         <div className="hero-copy">
-          <p className="eyebrow">作业时光 · 孩子端</p>
+          <p className="eyebrow">作业时光 · 学生端</p>
           <h1>{child ? `${child.name}，今天也一起加油` : '嘀嘀正在准备今天的计划'}</h1>
           <p className="sync-line"><span className="live-dot" />{message}</p>
         </div>
