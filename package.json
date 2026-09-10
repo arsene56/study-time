@@ -14,7 +14,7 @@
     "build:parent": "pnpm build:shared && pnpm --filter @study-time/parent-miniapp build:weapp",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
-    "lint": "oxlint",
+    "lint": "pnpm build:shared && oxlint",
     "format": "oxfmt"
   },
   "dependencies": {

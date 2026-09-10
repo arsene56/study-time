@@ -33,7 +33,6 @@ jobs:
       - name: Frontend quality and builds
         run: |
           pnpm lint
-          pnpm build:shared
           pnpm --filter @study-time/student-pwa build
           pnpm --filter @study-time/parent-miniapp build:h5
           pnpm --filter @study-time/parent-miniapp build:weapp
