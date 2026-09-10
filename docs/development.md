@@ -55,31 +55,33 @@
 所有业务接口以 `/api/v1` 开头：
 
 - `GET /demo/context`：读取本地演示家庭和学生。
-- `POST /homework-batches/mock-recognize?childId=...`：上传可选图片并生成模拟识别结果。
+- `POST /homework-batches/mock-recognize?studentId=...`：上传可选图片并生成模拟识别结果。
 - `GET /recognition-capabilities`：读取当前 OCR Provider 与真实识别可用状态。
-- `POST /homework-batches/recognize?childId=...`：上传图片并执行真实 OCR；失败时返回可人工处理的批次。
+- `POST /homework-batches/recognize?studentId=...`：上传图片并执行真实 OCR；失败时返回可人工处理的批次。
 - `POST /homework-batches/{batchId}/tasks`：为待确认批次人工补录作业项。
 - `PUT /homework-tasks/{taskId}` / `DELETE /homework-tasks/{taskId}`：修订或删除待确认作业项。
 - `POST /homework-batches/{batchId}/confirm-and-plan`：确认并生成计划。
-- `GET /children/{childId}/today-plan`：读取当天计划。
+- `GET /students/{studentId}/today-plan`：读取当天计划。
 - `POST /plan-items/{itemId}/start`：开始任务并记录计时起点。
 - `POST /plan-items/{itemId}/complete`：完成任务、记录实际用时并奖励星星。
 - `POST /plan-items/{itemId}/overrun-decision`：选择暂时跳过或继续挑战，并动态重排。
 - `POST /plans/{planId}/reorder`：家长或学生提交完整任务顺序。
-- `GET /children/{childId}/activities`：查看操作记录。
-- `GET /children/{childId}/personalization-profile`：读取学生独立的近期估时画像。
-- `GET /children/{childId}/weekly-report`：读取本周成长数据、徽章与点评。
-- `GET /children/{childId}/weekly-report?weekStart=...`：读取指定自然周的趋势与上周对比。
-- `POST /children/{childId}/weekly-comments`：添加家庭鼓励或学生自评。
-- `POST /children/{childId}/weekly-goal`：家长设置或调整本周成长目标。
-- `POST /children/{childId}/weekly-bonus/claim`：学生达标后领取一次性周奖励。
-- `GET|POST /families/{familyId}/rewards?childId=...`：读取奖励商店或添加自定义奖励。
+- `GET /students/{studentId}/activities`：查看操作记录。
+- `GET /students/{studentId}/personalization-profile`：读取学生独立的近期估时画像。
+- `GET /students/{studentId}/weekly-report`：读取本周成长数据、徽章与点评。
+- `GET /students/{studentId}/weekly-report?weekStart=...`：读取指定自然周的趋势与上周对比。
+- `POST /students/{studentId}/weekly-comments`：添加家庭鼓励或学生自评。
+- `POST /students/{studentId}/weekly-goal`：家长设置或调整本周成长目标。
+- `POST /students/{studentId}/weekly-bonus/claim`：学生达标后领取一次性周奖励。
+- `GET|POST /families/{familyId}/rewards?studentId=...`：读取奖励商店或添加自定义奖励。
 - `POST /rewards/{rewardId}/redeem`：学生发起奖励申请。
 - `POST /reward-redemptions/{redemptionId}/review`：家长批准或暂缓奖励。
 - `POST /rewards/{rewardId}/equip`：学生装备已经解锁的嘀嘀皮肤。
-- `WS /ws/updates?childId=...`：订阅指定学生的计划事件。
+- `WS /ws/updates?studentId=...`：订阅指定学生的计划事件。
 
 数据库结构由 `server/src/main/resources/db/migration` 下的 Flyway 迁移管理。已经执行过的迁移不得改写；表结构调整应继续新增迁移文件。
+
+V9 起，历史对象路径通过 `storage_key_migrations` 队列迁移：应用启动后先在 MinIO 中复制到当前学生目录，再切换 MySQL 引用，最后删除旧对象和已完成队列记录。任一步失败都会保留可重试状态，避免数据库引用指向尚未搬迁的文件。
 
 ## 开发约定
 

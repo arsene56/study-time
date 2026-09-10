@@ -26,7 +26,7 @@ class PlanningServiceTest {
 
     private TaskRow task(String id, int minutes, String difficulty, int sortOrder) {
         return new TaskRow(
-                id, "batch", "child", "学科", id, "类型", "⭐", minutes,
+                id, "batch", "student", "学科", id, "类型", "⭐", minutes,
                 minutes, "GRADE_DEFAULT", 0, "LOW", "按年级规则", difficulty,
                 "HIGH", "HIGH", 98D, false, "PENDING_CONFIRMATION", sortOrder);
     }

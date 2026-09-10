@@ -115,7 +115,7 @@ importers:
         specifier: 4.92.0
         version: 4.92.0(@cloudflare/workers-types@4.20260515.1)
 
-  apps/child-pwa:
+  apps/student-pwa:
     dependencies:
       '@study-time/shared':
         specifier: workspace:*

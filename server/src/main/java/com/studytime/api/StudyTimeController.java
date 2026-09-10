@@ -69,9 +69,9 @@ public class StudyTimeController {
     @PostMapping("/homework-batches/mock-recognize")
     @org.springframework.web.bind.annotation.ResponseStatus(HttpStatus.CREATED)
     public HomeworkBatchView mockRecognize(
-            @RequestParam String childId,
+            @RequestParam String studentId,
             @RequestParam(required = false) MultipartFile file) {
-        return homeworkService.mockRecognize(childId, file);
+        return homeworkService.mockRecognize(studentId, file);
     }
 
     @GetMapping("/recognition-capabilities")
@@ -82,9 +82,9 @@ public class StudyTimeController {
     @PostMapping("/homework-batches/recognize")
     @org.springframework.web.bind.annotation.ResponseStatus(HttpStatus.CREATED)
     public HomeworkBatchView recognize(
-            @RequestParam String childId,
+            @RequestParam String studentId,
             @RequestParam MultipartFile file) {
-        return homeworkService.recognize(childId, file);
+        return homeworkService.recognize(studentId, file);
     }
 
     @PostMapping("/homework-batches/{batchId}/tasks")
@@ -114,20 +114,20 @@ public class StudyTimeController {
         return homeworkService.confirmAndPlan(batchId, LocalTime.parse(request.startTime()));
     }
 
-    @GetMapping("/children/{childId}/today-plan")
-    public PlanView todayPlan(@PathVariable String childId) {
-        return homeworkService.todayPlan(childId);
+    @GetMapping("/students/{studentId}/today-plan")
+    public PlanView todayPlan(@PathVariable String studentId) {
+        return homeworkService.todayPlan(studentId);
     }
 
-    @GetMapping("/children/{childId}/personalization-profile")
-    public PersonalizationProfileView personalizationProfile(@PathVariable String childId) {
-        return homeworkService.personalizationProfile(childId);
+    @GetMapping("/students/{studentId}/personalization-profile")
+    public PersonalizationProfileView personalizationProfile(@PathVariable String studentId) {
+        return homeworkService.personalizationProfile(studentId);
     }
 
-    @GetMapping("/children/{childId}/activities")
-    public List<ActivityView> activities(@PathVariable String childId) {
-        repository.requireChild(childId);
-        return repository.findActivities(childId);
+    @GetMapping("/students/{studentId}/activities")
+    public List<ActivityView> activities(@PathVariable String studentId) {
+        repository.requireStudent(studentId);
+        return repository.findActivities(studentId);
     }
 
     @PostMapping("/plan-items/{itemId}/start")
@@ -158,47 +158,47 @@ public class StudyTimeController {
         return executionService.reorder(planId, request);
     }
 
-    @GetMapping("/children/{childId}/weekly-report")
+    @GetMapping("/students/{studentId}/weekly-report")
     public WeeklyReportView weeklyReport(
-            @PathVariable String childId,
+            @PathVariable String studentId,
             @RequestParam(required = false) LocalDate weekStart) {
-        return growthService.weeklyReport(childId, weekStart);
+        return growthService.weeklyReport(studentId, weekStart);
     }
 
-    @PostMapping("/children/{childId}/weekly-comments")
+    @PostMapping("/students/{studentId}/weekly-comments")
     public WeeklyReportView addWeeklyComment(
-            @PathVariable String childId,
+            @PathVariable String studentId,
             @Valid @RequestBody AddWeeklyCommentRequest request) {
-        return growthService.addComment(childId, request);
+        return growthService.addComment(studentId, request);
     }
 
-    @PostMapping("/children/{childId}/weekly-goal")
+    @PostMapping("/students/{studentId}/weekly-goal")
     public WeeklyReportView saveWeeklyGoal(
-            @PathVariable String childId,
+            @PathVariable String studentId,
             @Valid @RequestBody SaveWeeklyGoalRequest request) {
-        return growthService.saveWeeklyGoal(childId, request);
+        return growthService.saveWeeklyGoal(studentId, request);
     }
 
-    @PostMapping("/children/{childId}/weekly-bonus/claim")
+    @PostMapping("/students/{studentId}/weekly-bonus/claim")
     public WeeklyReportView claimWeeklyBonus(
-            @PathVariable String childId,
+            @PathVariable String studentId,
             @RequestBody(required = false) ClaimWeeklyBonusRequest request) {
-        return growthService.claimWeeklyBonus(childId, request);
+        return growthService.claimWeeklyBonus(studentId, request);
     }
 
     @GetMapping("/families/{familyId}/rewards")
     public RewardStoreView rewards(
             @PathVariable String familyId,
-            @RequestParam String childId) {
-        return growthService.rewards(familyId, childId);
+            @RequestParam String studentId) {
+        return growthService.rewards(familyId, studentId);
     }
 
     @PostMapping("/families/{familyId}/rewards")
     public RewardStoreView createReward(
             @PathVariable String familyId,
-            @RequestParam String childId,
+            @RequestParam String studentId,
             @Valid @RequestBody CreateRewardRequest request) {
-        return growthService.createReward(familyId, childId, request);
+        return growthService.createReward(familyId, studentId, request);
     }
 
     @PostMapping("/rewards/{rewardId}/redeem")

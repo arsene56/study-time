@@ -17,7 +17,7 @@
 
 ```text
 apps/parent-miniapp  家长端：Taro + React + TypeScript（微信小程序/H5 调试）
-apps/child-pwa       学生端：React + Vite PWA（平板竖屏）
+apps/student-pwa       学生端：React + Vite PWA（平板竖屏）
 packages/shared      双端共享 TypeScript 数据模型
 server               Java 21 + Spring Boot API
 app、components 等   原有高保真演示站点
@@ -53,11 +53,11 @@ node --version
 
    ```powershell
    pnpm install
-   pnpm dev:child
+   pnpm dev:student
    ```
 
    打开 <http://localhost:5173/>。学生端默认进入“小满”的演示账号，也可通过
-   `?childId=demo-child-keke` 模拟另一台已绑定的学生设备。
+   `?studentId=demo-student-keke` 模拟另一台已绑定的学生设备。
 
 4. 启动家长端 H5 调试版（新终端，在仓库根目录）：
 
@@ -97,7 +97,7 @@ cd server
 前端生产构建：
 
 ```powershell
-pnpm build:child
+pnpm build:student
 pnpm build:parent
 pnpm build
 ```

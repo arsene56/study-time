@@ -1,7 +1,7 @@
 package com.studytime.domain;
 
 import com.studytime.api.ApiModels.ActivityView;
-import com.studytime.api.ApiModels.ChildView;
+import com.studytime.api.ApiModels.StudentView;
 import com.studytime.api.ApiModels.HomeworkBatchView;
 import com.studytime.api.ApiModels.PlanItemView;
 import com.studytime.api.ApiModels.PlanView;
@@ -32,13 +32,13 @@ public class StudyTimeRepository {
         this.jdbc = jdbc;
     }
 
-    public record ChildRow(String id, String familyId, String name, int grade, LocalTime bedtime, int stars) {
+    public record StudentRow(String id, String familyId, String name, int grade, LocalTime bedtime, int stars) {
     }
 
     public record TaskRow(
             String id,
             String batchId,
-            String childId,
+            String studentId,
             String subject,
             String title,
             String taskType,
@@ -58,7 +58,7 @@ public class StudyTimeRepository {
             int sortOrder) {
     }
 
-    public record BatchRow(String id, String familyId, String childId, String status) {
+    public record BatchRow(String id, String familyId, String studentId, String status) {
     }
 
     public record HistorySample(
@@ -90,7 +90,7 @@ public class StudyTimeRepository {
 
     public record PlanRow(
             String id,
-            String childId,
+            String studentId,
             LocalDate planDate,
             LocalTime startTime,
             LocalTime originalEndTime,
@@ -100,40 +100,40 @@ public class StudyTimeRepository {
             int version) {
     }
 
-    public List<ChildView> findDemoChildren() {
-        return jdbc.sql("SELECT id, name, grade, bedtime, stars FROM children WHERE family_id = 'demo-family' ORDER BY grade DESC")
-                .query((rs, rowNum) -> new ChildView(
+    public List<StudentView> findDemoStudents() {
+        return jdbc.sql("SELECT id, name, grade, bedtime, stars FROM students WHERE family_id = 'demo-family' ORDER BY grade DESC")
+                .query((rs, rowNum) -> new StudentView(
                         rs.getString("id"), rs.getString("name"), rs.getInt("grade"),
                         rs.getTime("bedtime").toLocalTime().format(TIME), rs.getInt("stars")))
                 .list();
     }
 
-    public ChildRow requireChild(String childId) {
-        return jdbc.sql("SELECT id, family_id, name, grade, bedtime, stars FROM children WHERE id = :id")
-                .param("id", childId)
-                .query((rs, rowNum) -> new ChildRow(
+    public StudentRow requireStudent(String studentId) {
+        return jdbc.sql("SELECT id, family_id, name, grade, bedtime, stars FROM students WHERE id = :id")
+                .param("id", studentId)
+                .query((rs, rowNum) -> new StudentRow(
                         rs.getString("id"), rs.getString("family_id"), rs.getString("name"),
                         rs.getInt("grade"), rs.getTime("bedtime").toLocalTime(), rs.getInt("stars")))
                 .optional()
-                .orElseThrow(() -> new IllegalArgumentException("未找到学生：" + childId));
+                .orElseThrow(() -> new IllegalArgumentException("未找到学生：" + studentId));
     }
 
     public void insertBatch(
             String id,
-            ChildRow child,
+            StudentRow student,
             String objectKey,
             String recognitionMode,
             String status,
             String ocrProvider) {
         jdbc.sql("""
                         INSERT INTO homework_batches
-                        (id, family_id, child_id, source_object_key, recognition_mode, status, created_by, ocr_provider)
-                        VALUES (:id, :familyId, :childId, :objectKey, :recognitionMode, :status,
+                        (id, family_id, student_id, source_object_key, recognition_mode, status, created_by, ocr_provider)
+                        VALUES (:id, :familyId, :studentId, :objectKey, :recognitionMode, :status,
                                 'demo-parent-mom', :ocrProvider)
                         """)
                 .param("id", id)
-                .param("familyId", child.familyId())
-                .param("childId", child.id())
+                .param("familyId", student.familyId())
+                .param("studentId", student.id())
                 .param("objectKey", objectKey)
                 .param("recognitionMode", recognitionMode)
                 .param("status", status)
@@ -170,18 +170,18 @@ public class StudyTimeRepository {
     public void insertTask(TaskRow task) {
         jdbc.sql("""
                         INSERT INTO homework_tasks
-                        (id, batch_id, child_id, subject, title, task_type, icon, estimated_minutes,
+                        (id, batch_id, student_id, subject, title, task_type, icon, estimated_minutes,
                          base_estimated_minutes, estimate_source, estimate_sample_size, estimate_confidence,
                          estimate_reason, difficulty, eye_load, confidence, ocr_confidence, manually_edited,
                          status, sort_order)
-                        VALUES (:id, :batchId, :childId, :subject, :title, :taskType, :icon, :minutes,
+                        VALUES (:id, :batchId, :studentId, :subject, :title, :taskType, :icon, :minutes,
                                 :baseMinutes, :estimateSource, :sampleSize, :estimateConfidence, :estimateReason,
                                 :difficulty, :eyeLoad, :confidence, :ocrConfidence, :manuallyEdited,
                                 :status, :sortOrder)
                         """)
                 .param("id", task.id())
                 .param("batchId", task.batchId())
-                .param("childId", task.childId())
+                .param("studentId", task.studentId())
                 .param("subject", task.subject())
                 .param("title", task.title())
                 .param("taskType", task.taskType())
@@ -204,7 +204,7 @@ public class StudyTimeRepository {
 
     public List<TaskRow> findTasksByBatch(String batchId) {
         return jdbc.sql("""
-                        SELECT id, batch_id, child_id, subject, title, task_type, icon, estimated_minutes,
+                        SELECT id, batch_id, student_id, subject, title, task_type, icon, estimated_minutes,
                                base_estimated_minutes, estimate_source, estimate_sample_size, estimate_confidence,
                                estimate_reason, difficulty, eye_load, confidence, ocr_confidence, manually_edited,
                                status, sort_order
@@ -217,13 +217,13 @@ public class StudyTimeRepository {
 
     public HomeworkBatchView getBatch(String batchId) {
         return jdbc.sql("""
-                        SELECT id, child_id, status, recognition_mode, source_object_key, ocr_provider,
+                        SELECT id, student_id, status, recognition_mode, source_object_key, ocr_provider,
                                ocr_request_id, ocr_raw_text, ocr_average_confidence, recognition_error, recognized_at
                         FROM homework_batches WHERE id = :id
                         """)
                 .param("id", batchId)
                 .query((rs, rowNum) -> new HomeworkBatchView(
-                        rs.getString("id"), rs.getString("child_id"), rs.getString("status"),
+                        rs.getString("id"), rs.getString("student_id"), rs.getString("status"),
                         rs.getString("recognition_mode"), rs.getString("source_object_key"),
                         rs.getString("ocr_provider"), rs.getString("ocr_request_id"),
                         rs.getString("ocr_raw_text"), nullableDouble(rs, "ocr_average_confidence"),
@@ -234,10 +234,10 @@ public class StudyTimeRepository {
     }
 
     public BatchRow requireEditableBatch(String batchId) {
-        BatchRow batch = jdbc.sql("SELECT id, family_id, child_id, status FROM homework_batches WHERE id = :id")
+        BatchRow batch = jdbc.sql("SELECT id, family_id, student_id, status FROM homework_batches WHERE id = :id")
                 .param("id", batchId)
                 .query((rs, rowNum) -> new BatchRow(
-                        rs.getString("id"), rs.getString("family_id"), rs.getString("child_id"),
+                        rs.getString("id"), rs.getString("family_id"), rs.getString("student_id"),
                         rs.getString("status")))
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("未找到作业批次：" + batchId));
@@ -249,7 +249,7 @@ public class StudyTimeRepository {
 
     public TaskRow requireEditableTask(String taskId) {
         TaskRow task = jdbc.sql("""
-                        SELECT t.id, t.batch_id, t.child_id, t.subject, t.title, t.task_type, t.icon,
+                        SELECT t.id, t.batch_id, t.student_id, t.subject, t.title, t.task_type, t.icon,
                                t.estimated_minutes, t.base_estimated_minutes, t.estimate_source,
                                t.estimate_sample_size, t.estimate_confidence, t.estimate_reason,
                                t.difficulty, t.eye_load, t.confidence, t.ocr_confidence, t.manually_edited,
@@ -336,23 +336,23 @@ public class StudyTimeRepository {
                 .update();
     }
 
-    public void replaceTodayPlan(String childId, String planId, LocalTime start, LocalTime end) {
-        jdbc.sql("DELETE FROM plans WHERE child_id = :childId AND plan_date = :planDate")
-                .param("childId", childId)
+    public void replaceTodayPlan(String studentId, String planId, LocalTime start, LocalTime end) {
+        jdbc.sql("DELETE FROM plans WHERE student_id = :studentId AND plan_date = :planDate")
+                .param("studentId", studentId)
                 .param("planDate", LocalDate.now())
                 .update();
         jdbc.sql("""
                         INSERT INTO plans
-                        (id, child_id, plan_date, start_time, original_end_time, planned_end_time,
+                        (id, student_id, plan_date, start_time, original_end_time, planned_end_time,
                          bedtime_buffer_minutes, warning_message, status, version)
-                        VALUES (:id, :childId, :planDate, :start, :end, :end, 45, :warning, 'READY', 1)
+                        VALUES (:id, :studentId, :planDate, :start, :end, :end, 45, :warning, 'READY', 1)
                         """)
                 .param("id", planId)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("planDate", LocalDate.now())
                 .param("start", start)
                 .param("end", end)
-                .param("warning", scheduleWarning(requireChild(childId), end, 45))
+                .param("warning", scheduleWarning(requireStudent(studentId), end, 45))
                 .update();
     }
 
@@ -380,16 +380,16 @@ public class StudyTimeRepository {
                 .update();
     }
 
-    public Optional<PlanView> findTodayPlan(String childId) {
+    public Optional<PlanView> findTodayPlan(String studentId) {
         return jdbc.sql("""
-                        SELECT id, child_id, plan_date, start_time, original_end_time, planned_end_time,
+                        SELECT id, student_id, plan_date, start_time, original_end_time, planned_end_time,
                                bedtime_buffer_minutes, warning_message, status, version
-                        FROM plans WHERE child_id = :childId AND plan_date = :planDate
+                        FROM plans WHERE student_id = :studentId AND plan_date = :planDate
                         """)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("planDate", LocalDate.now())
                 .query((rs, rowNum) -> new PlanView(
-                        rs.getString("id"), rs.getString("child_id"), rs.getDate("plan_date").toLocalDate().toString(),
+                        rs.getString("id"), rs.getString("student_id"), rs.getDate("plan_date").toLocalDate().toString(),
                         rs.getTime("start_time").toLocalTime().format(TIME),
                         rs.getTime("original_end_time").toLocalTime().format(TIME),
                         rs.getTime("planned_end_time").toLocalTime().format(TIME),
@@ -441,8 +441,8 @@ public class StudyTimeRepository {
                 .orElseThrow(() -> new IllegalArgumentException("未找到计划项：" + itemId));
     }
 
-    public String findChildIdByPlan(String planId) {
-        return jdbc.sql("SELECT child_id FROM plans WHERE id = :id")
+    public String findStudentIdByPlan(String planId) {
+        return jdbc.sql("SELECT student_id FROM plans WHERE id = :id")
                 .param("id", planId)
                 .query(String.class)
                 .single();
@@ -506,13 +506,13 @@ public class StudyTimeRepository {
 
     public PlanRow requirePlanForUpdate(String planId) {
         return jdbc.sql("""
-                        SELECT id, child_id, plan_date, start_time, original_end_time, planned_end_time,
+                        SELECT id, student_id, plan_date, start_time, original_end_time, planned_end_time,
                                bedtime_buffer_minutes, status, version
                         FROM plans WHERE id = :id FOR UPDATE
                         """)
                 .param("id", planId)
                 .query((rs, rowNum) -> new PlanRow(
-                        rs.getString("id"), rs.getString("child_id"), rs.getDate("plan_date").toLocalDate(),
+                        rs.getString("id"), rs.getString("student_id"), rs.getDate("plan_date").toLocalDate(),
                         rs.getTime("start_time").toLocalTime(),
                         rs.getTime("original_end_time").toLocalTime(),
                         rs.getTime("planned_end_time").toLocalTime(),
@@ -571,7 +571,7 @@ public class StudyTimeRepository {
     }
 
     public List<HistorySample> findRecentExactHistory(
-            String childId,
+            String studentId,
             String subject,
             String taskType,
             int limit) {
@@ -579,7 +579,7 @@ public class StudyTimeRepository {
                         SELECT subject, task_type, base_estimated_minutes AS estimated_minutes, actual_seconds,
                                COALESCE(updated_at, created_at) AS completed_at
                         FROM homework_tasks
-                        WHERE child_id = :childId
+                        WHERE student_id = :studentId
                           AND subject = :subject
                           AND task_type = :taskType
                           AND status = 'DONE'
@@ -588,7 +588,7 @@ public class StudyTimeRepository {
                         ORDER BY completed_at DESC
                         LIMIT :limit
                         """)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("subject", subject)
                 .param("taskType", taskType)
                 .param("historyStart", personalizationHistoryStart())
@@ -597,12 +597,12 @@ public class StudyTimeRepository {
                 .list();
     }
 
-    public List<HistorySample> findRecentSubjectHistory(String childId, String subject, int limit) {
+    public List<HistorySample> findRecentSubjectHistory(String studentId, String subject, int limit) {
         return jdbc.sql("""
                         SELECT subject, task_type, base_estimated_minutes AS estimated_minutes, actual_seconds,
                                COALESCE(updated_at, created_at) AS completed_at
                         FROM homework_tasks
-                        WHERE child_id = :childId
+                        WHERE student_id = :studentId
                           AND subject = :subject
                           AND status = 'DONE'
                           AND actual_seconds > 0
@@ -610,7 +610,7 @@ public class StudyTimeRepository {
                         ORDER BY completed_at DESC
                         LIMIT :limit
                         """)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("subject", subject)
                 .param("historyStart", personalizationHistoryStart())
                 .param("limit", limit)
@@ -618,49 +618,49 @@ public class StudyTimeRepository {
                 .list();
     }
 
-    public List<HistorySample> findRecentChildHistory(String childId, int limit) {
+    public List<HistorySample> findRecentStudentHistory(String studentId, int limit) {
         return jdbc.sql("""
                         SELECT subject, task_type, base_estimated_minutes AS estimated_minutes, actual_seconds,
                                COALESCE(updated_at, created_at) AS completed_at
                         FROM homework_tasks
-                        WHERE child_id = :childId
+                        WHERE student_id = :studentId
                           AND status = 'DONE'
                           AND actual_seconds > 0
                           AND created_at >= :historyStart
                         ORDER BY completed_at DESC
                         LIMIT :limit
                         """)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("historyStart", personalizationHistoryStart())
                 .param("limit", limit)
                 .query(this::mapHistorySample)
                 .list();
     }
 
-    public void insertStarTransaction(String childId, int amount, String reason, String relatedId) {
+    public void insertStarTransaction(String studentId, int amount, String reason, String relatedId) {
         jdbc.sql("""
-                        INSERT INTO star_transactions (id, child_id, amount, reason, related_id)
-                        VALUES (:id, :childId, :amount, :reason, :relatedId)
+                        INSERT INTO star_transactions (id, student_id, amount, reason, related_id)
+                        VALUES (:id, :studentId, :amount, :reason, :relatedId)
                         """)
                 .param("id", java.util.UUID.randomUUID().toString())
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("amount", amount)
                 .param("reason", reason)
                 .param("relatedId", relatedId)
                 .update();
     }
 
-    public void addStars(String childId, int stars) {
-        jdbc.sql("UPDATE children SET stars = stars + :stars WHERE id = :id")
+    public void addStars(String studentId, int stars) {
+        jdbc.sql("UPDATE students SET stars = stars + :stars WHERE id = :id")
                 .param("stars", stars)
-                .param("id", childId)
+                .param("id", studentId)
                 .update();
     }
 
     public void insertActivity(
             String id,
             String familyId,
-            String childId,
+            String studentId,
             String actorId,
             String actorName,
             String actorRelation,
@@ -668,12 +668,12 @@ public class StudyTimeRepository {
             String description) {
         jdbc.sql("""
                         INSERT INTO activity_log
-                        (id, family_id, child_id, actor_id, actor_name, actor_relation, action_type, description)
-                        VALUES (:id, :familyId, :childId, :actorId, :actorName, :actorRelation, :actionType, :description)
+                        (id, family_id, student_id, actor_id, actor_name, actor_relation, action_type, description)
+                        VALUES (:id, :familyId, :studentId, :actorId, :actorName, :actorRelation, :actionType, :description)
                         """)
                 .param("id", id)
                 .param("familyId", familyId)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("actorId", actorId)
                 .param("actorName", actorName)
                 .param("actorRelation", actorRelation)
@@ -682,12 +682,12 @@ public class StudyTimeRepository {
                 .update();
     }
 
-    public List<ActivityView> findActivities(String childId) {
+    public List<ActivityView> findActivities(String studentId) {
         return jdbc.sql("""
                         SELECT id, actor_name, actor_relation, action_type, description, created_at
-                        FROM activity_log WHERE child_id = :childId ORDER BY created_at DESC LIMIT 30
+                        FROM activity_log WHERE student_id = :studentId ORDER BY created_at DESC LIMIT 30
                         """)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .query((rs, rowNum) -> {
                     LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
                     return new ActivityView(
@@ -699,7 +699,7 @@ public class StudyTimeRepository {
 
     private TaskRow mapTask(ResultSet rs, int rowNum) throws SQLException {
         return new TaskRow(
-                rs.getString("id"), rs.getString("batch_id"), rs.getString("child_id"),
+                rs.getString("id"), rs.getString("batch_id"), rs.getString("student_id"),
                 rs.getString("subject"), rs.getString("title"), rs.getString("task_type"),
                 rs.getString("icon"), rs.getInt("estimated_minutes"), rs.getInt("base_estimated_minutes"),
                 rs.getString("estimate_source"), rs.getInt("estimate_sample_size"),
@@ -735,8 +735,8 @@ public class StudyTimeRepository {
                 task.confidence(), task.ocrConfidence(), task.manuallyEdited(), task.status());
     }
 
-    public String scheduleWarning(ChildRow child, LocalTime plannedEnd, int bufferMinutes) {
-        int minutesBeforeBed = (int) Duration.between(plannedEnd, child.bedtime()).toMinutes();
+    public String scheduleWarning(StudentRow student, LocalTime plannedEnd, int bufferMinutes) {
+        int minutesBeforeBed = (int) Duration.between(plannedEnd, student.bedtime()).toMinutes();
         if (minutesBeforeBed >= bufferMinutes) {
             return null;
         }

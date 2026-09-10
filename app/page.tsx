@@ -40,8 +40,8 @@ export default function Home() {
                 <span><strong>我是家长</strong><small>录作业 · 看进度 · 给鼓励</small></span>
                 <ArrowRight size={20} />
               </a>
-              <a className="role-card" href="/child">
-                <span className="role-icon child-role"><Sparkles /></span>
+              <a className="role-card" href="/student">
+                <span className="role-icon student-role"><Sparkles /></span>
                 <span><strong>我是学生</strong><small>认领计划 · 专注打卡 · 收集星星</small></span>
                 <ArrowRight size={20} />
               </a>

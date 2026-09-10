@@ -1,4 +1,4 @@
-export type ChildProfile = {
+export type StudentProfile = {
   id: string;
   name: string;
   grade: number;
@@ -12,7 +12,7 @@ export type DemoContext = {
   parentId: string;
   parentName: string;
   parentRelation: string;
-  children: ChildProfile[];
+  students: StudentProfile[];
 };
 
 export type RecognizedTask = {
@@ -37,7 +37,7 @@ export type RecognizedTask = {
 
 export type HomeworkBatch = {
   id: string;
-  childId: string;
+  studentId: string;
   status: string;
   recognitionMode: string;
   sourceObjectKey: string | null;
@@ -68,7 +68,7 @@ export type SubjectPersonalization = {
 };
 
 export type PersonalizationProfile = {
-  childId: string;
+  studentId: string;
   totalSamples: number;
   level: 'STARTING' | 'LEARNING' | 'STABLE';
   confidence: 'LOW' | 'MEDIUM' | 'HIGH';
@@ -97,7 +97,7 @@ export type PlanItem = {
 
 export type TodayPlan = {
   id: string;
-  childId: string;
+  studentId: string;
   planDate: string;
   startTime: string;
   originalEndTime: string;
@@ -126,7 +126,7 @@ export type RealtimeEvent = {
     | 'WEEKLY_GOAL_UPDATED'
     | 'WEEKLY_BONUS_CLAIMED'
     | 'DIDI_SKIN_EQUIPPED';
-  childId: string;
+  studentId: string;
   occurredAt: string;
 };
 
@@ -247,14 +247,14 @@ export type StarTransaction = {
 };
 
 export type RewardStore = {
-  childStars: number;
+  studentStars: number;
   equippedSkinRewardId: string | null;
   rewards: Reward[];
   redemptions: RewardRedemption[];
   starTransactions: StarTransaction[];
 };
 
-export const demoChildId = 'demo-child-xiaoman';
+export const demoStudentId = 'demo-student-xiaoman';
 
 export function gradeLabel(grade: number) {
   const labels = ['一', '二', '三', '四', '五', '六'];

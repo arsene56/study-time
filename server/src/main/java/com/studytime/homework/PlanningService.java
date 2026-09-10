@@ -2,7 +2,7 @@ package com.studytime.homework;
 
 import com.studytime.api.ApiModels.PlanView;
 import com.studytime.domain.StudyTimeRepository;
-import com.studytime.domain.StudyTimeRepository.ChildRow;
+import com.studytime.domain.StudyTimeRepository.StudentRow;
 import com.studytime.domain.StudyTimeRepository.PlanItemRow;
 import com.studytime.domain.StudyTimeRepository.TaskRow;
 import org.springframework.stereotype.Service;
@@ -30,9 +30,9 @@ public class PlanningService {
         if (tasks.isEmpty()) {
             throw new IllegalArgumentException("该批次没有可排期的作业");
         }
-        ChildRow child = repository.requireChild(tasks.getFirst().childId());
+        StudentRow student = repository.requireStudent(tasks.getFirst().studentId());
         List<TaskRow> orderedTasks = orderTasks(tasks);
-        List<ItemDraft> drafts = addHealthyBreaks(orderedTasks, child.grade());
+        List<ItemDraft> drafts = addHealthyBreaks(orderedTasks, student.grade());
         drafts.add(new ItemDraft(null, "ROUTINE", "整理", "检查作业并整理书包", "整理", "🎒", 10));
 
         LocalTime cursor = startTime;
@@ -44,7 +44,7 @@ public class PlanningService {
         }
 
         String planId = UUID.randomUUID().toString();
-        repository.replaceTodayPlan(child.id(), planId, startTime, cursor);
+        repository.replaceTodayPlan(student.id(), planId, startTime, cursor);
         int order = 0;
         for (ScheduledDraft item : scheduled) {
             repository.insertPlanItem(new PlanItemRow(
@@ -54,9 +54,9 @@ public class PlanningService {
         }
         repository.confirmBatch(batchId);
         repository.insertActivity(
-                UUID.randomUUID().toString(), child.familyId(), child.id(), "demo-parent-mom", "林妈妈", "妈妈",
+                UUID.randomUUID().toString(), student.familyId(), student.id(), "demo-parent-mom", "林妈妈", "妈妈",
                 "PLAN_CREATED", "确认了识别结果，嘀嘀已生成今天的作业计划");
-        return repository.findTodayPlan(child.id()).orElseThrow();
+        return repository.findTodayPlan(student.id()).orElseThrow();
     }
 
     List<TaskRow> orderTasks(List<TaskRow> tasks) {

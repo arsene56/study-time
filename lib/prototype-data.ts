@@ -20,7 +20,7 @@ export type HomeworkTask = {
   evidence?: boolean;
 };
 
-export type ChildProfile = {
+export type StudentProfile = {
   id: string;
   name: string;
   grade: string;
@@ -37,7 +37,7 @@ export type ChildProfile = {
 
 export type ActivityEntry = {
   id: string;
-  childId: string;
+  studentId: string;
   actor: string;
   relation: string;
   action: string;
@@ -60,7 +60,7 @@ export function getFocusMinutes(grade: string) {
   return 30;
 }
 
-export const initialChildren: ChildProfile[] = [
+export const initialStudents: StudentProfile[] = [
   {
     id: 'xiaoman',
     name: '林小满',
@@ -154,10 +154,10 @@ export const initialChildren: ChildProfile[] = [
 ];
 
 export const initialActivities: ActivityEntry[] = [
-  { id: 'a1', childId: 'xiaoman', actor: '妈妈', relation: '妈妈', action: '上传了今天的作业照片，嘀嘀已生成计划', time: '16:48', tone: 'mint' },
-  { id: 'a2', childId: 'xiaoman', actor: '林小满', relation: '学生', action: '把英语跟读移到了生字练习之后', time: '17:02', tone: 'orange' },
-  { id: 'a3', childId: 'xiaoman', actor: '爸爸', relation: '爸爸', action: '将今晚兴趣班调整为 20:00 开始', time: '17:06', tone: 'blue' },
-  { id: 'a4', childId: 'keke', actor: '林可可', relation: '学生', action: '完成了拼音卡片朗读，获得 5 颗星', time: '17:23', tone: 'orange' },
+  { id: 'a1', studentId: 'xiaoman', actor: '妈妈', relation: '妈妈', action: '上传了今天的作业照片，嘀嘀已生成计划', time: '16:48', tone: 'mint' },
+  { id: 'a2', studentId: 'xiaoman', actor: '林小满', relation: '学生', action: '把英语跟读移到了生字练习之后', time: '17:02', tone: 'orange' },
+  { id: 'a3', studentId: 'xiaoman', actor: '爸爸', relation: '爸爸', action: '将今晚兴趣班调整为 20:00 开始', time: '17:06', tone: 'blue' },
+  { id: 'a4', studentId: 'keke', actor: '林可可', relation: '学生', action: '完成了拼音卡片朗读，获得 5 颗星', time: '17:23', tone: 'orange' },
 ];
 
 export const initialRewards: RewardItem[] = [

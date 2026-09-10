@@ -24,7 +24,7 @@ const navItems: { key: ParentTab; label: string; icon: typeof Home }[] = [
 
 export default function ParentPage() {
   const {
-    activeChild, activeChildId, children, activities, rewards, setActiveChild, moveTask,
+    activeStudent, activeStudentId, students, activities, rewards, setActiveStudent, moveTask,
     approveReward, resetDemo,
   } = usePrototype();
   const [tab, setTab] = useState<ParentTab>('today');
@@ -34,14 +34,14 @@ export default function ParentPage() {
   const [comment, setComment] = useState('这周你越来越会自己安排顺序了，特别棒！');
   const [toast, setToast] = useState('');
 
-  const homeworkTasks = activeChild.tasks.filter((task) => task.kind === 'homework');
+  const homeworkTasks = activeStudent.tasks.filter((task) => task.kind === 'homework');
   const done = homeworkTasks.filter((task) => task.status === 'done').length;
-  const filteredActivities = activities.filter((item) => item.childId === activeChildId).slice(0, 4);
+  const filteredActivities = activities.filter((item) => item.studentId === activeStudentId).slice(0, 4);
   const pendingRewards = rewards.filter((reward) => reward.status === 'pending');
 
   const estimatedTotal = useMemo(
-    () => activeChild.tasks.reduce((sum, task) => sum + task.estimatedMinutes, 0),
-    [activeChild.tasks],
+    () => activeStudent.tasks.reduce((sum, task) => sum + task.estimatedMinutes, 0),
+    [activeStudent.tasks],
   );
 
   function showToast(message: string) {
@@ -74,7 +74,7 @@ export default function ParentPage() {
           <strong>{activities.length} 条亲子协作记录</strong>
           <span>学生的每次自主调整，家长都能看见。</span>
         </div>
-        <a href="/child" className="rail-switch">切换到学生端 <span>→</span></a>
+        <a href="/student" className="rail-switch">切换到学生端 <span>→</span></a>
       </aside>
 
       <section className="device-frame phone-frame" aria-label="作业时光家长端原型">
@@ -85,38 +85,38 @@ export default function ParentPage() {
             <button className="icon-button" aria-label="通知"><Bell size={19} /><i /></button>
           </header>
 
-          <div className="child-switcher" aria-label="切换学生">
-            {children.map((child) => (
+          <div className="student-switcher" aria-label="切换学生">
+            {students.map((student) => (
               <button
-                key={child.id}
-                className={`child-chip ${child.id === activeChildId ? 'active' : ''} ${child.theme}`}
-                onClick={() => setActiveChild(child.id)}
+                key={student.id}
+                className={`student-chip ${student.id === activeStudentId ? 'active' : ''} ${student.theme}`}
+                onClick={() => setActiveStudent(student.id)}
               >
-                <span>{child.avatar}</span><b>{child.name.slice(1)}</b><small>{child.grade}</small>
+                <span>{student.avatar}</span><b>{student.name.slice(1)}</b><small>{student.grade}</small>
               </button>
             ))}
-            <button className="add-child-chip" onClick={() => setFamilyOpen(true)} aria-label="添加学生"><Plus /></button>
+            <button className="add-student-chip" onClick={() => setFamilyOpen(true)} aria-label="添加学生"><Plus /></button>
           </div>
 
           <div className="parent-scroll">
             {tab === 'today' && (
               <section className="mobile-view">
                 <div className="greeting-row">
-                  <div><p>9 月 8 日 · 星期二</p><h2>{activeChild.name.slice(1)}今天状态不错呀</h2></div>
+                  <div><p>9 月 8 日 · 星期二</p><h2>{activeStudent.name.slice(1)}今天状态不错呀</h2></div>
                   <span className="weather-dot">☀️</span>
                 </div>
 
                 <section className="plan-overview-card">
                   <div className="overview-head">
                     <span className="overview-icon"><Sparkles /></span>
-                    <div><p>嘀嘀的今日计划</p><h3>{done === homeworkTasks.length ? '今天全部完成啦！' : `预计 ${activeChild.plannedEnd} 完成`}</h3></div>
+                    <div><p>嘀嘀的今日计划</p><h3>{done === homeworkTasks.length ? '今天全部完成啦！' : `预计 ${activeStudent.plannedEnd} 完成`}</h3></div>
                     <button aria-label="更多"><MoreHorizontal /></button>
                   </div>
                   <div className="overview-progress"><span style={{ width: `${Math.max(8, done / homeworkTasks.length * 100)}%` }} /></div>
                   <div className="overview-meta">
                     <span><strong>{homeworkTasks.length}</strong> 项作业</span>
                     <span><strong>{estimatedTotal}</strong> 分钟含休息</span>
-                    <span><strong>{activeChild.bedtime}</strong> 前睡觉</span>
+                    <span><strong>{activeStudent.bedtime}</strong> 前睡觉</span>
                   </div>
                   <div className="sleep-buffer"><span>🌙</span><p><strong>已留出 55 分钟晚间时光</strong><small>阅读、洗漱和放松都安排好啦</small></p></div>
                 </section>
@@ -130,7 +130,7 @@ export default function ParentPage() {
 
                 <div className="section-heading"><div><span>今日时间线</span><small>长按拖动也可以调整</small></div><button onClick={() => showToast('已按最新作息重新规划')}><RefreshCcw />重排</button></div>
                 <div className="parent-timeline">
-                  {activeChild.tasks.map((task, index) => (
+                  {activeStudent.tasks.map((task, index) => (
                     <article className={`parent-task ${task.status} ${task.kind}`} key={task.id}>
                       <time>{task.start}</time>
                       <span className="timeline-node" />
@@ -144,7 +144,7 @@ export default function ParentPage() {
                         {task.needsHelp && <p className="help-note">需要帮助 · 已移到计划末尾</p>}
                         <div className="reorder-buttons">
                           <button disabled={index === 0} onClick={() => moveTask(task.id, -1, 'parent')} aria-label="上移"><ChevronUp /></button>
-                          <button disabled={index === activeChild.tasks.length - 1} onClick={() => moveTask(task.id, 1, 'parent')} aria-label="下移"><ChevronDown /></button>
+                          <button disabled={index === activeStudent.tasks.length - 1} onClick={() => moveTask(task.id, 1, 'parent')} aria-label="下移"><ChevronDown /></button>
                         </div>
                       </div>
                     </article>
@@ -162,18 +162,18 @@ export default function ParentPage() {
 
             {tab === 'report' && (
               <section className="mobile-view report-view">
-                <div className="page-title-row"><div><p>9 月 2 日—9 月 8 日</p><h2>{activeChild.name.slice(1)}的成长周报</h2></div><span className="week-medal">🏅</span></div>
+                <div className="page-title-row"><div><p>9 月 2 日—9 月 8 日</p><h2>{activeStudent.name.slice(1)}的成长周报</h2></div><span className="week-medal">🏅</span></div>
                 <section className="report-hero">
                   <div><span>本周自主完成率</span><strong>92<small>%</small></strong><p>比上周进步 8%</p></div>
                   <img src="/assets/didi-mascot.png" alt="嘀嘀机器人" />
                 </section>
                 <div className="report-metrics">
-                  <article><span>🔥</span><strong>{activeChild.streak} 天</strong><small>连续完成</small></article>
+                  <article><span>🔥</span><strong>{activeStudent.streak} 天</strong><small>连续完成</small></article>
                   <article><span>⭐</span><strong>+36</strong><small>本周星星</small></article>
                   <article><span>🧩</span><strong>6 次</strong><small>自主调整</small></article>
                 </div>
                 <section className="chart-card">
-                  <div className="chart-head"><div><strong>预估与实际用时</strong><small>嘀嘀正在越来越懂{activeChild.name.slice(1)}</small></div><span>本周</span></div>
+                  <div className="chart-head"><div><strong>预估与实际用时</strong><small>嘀嘀正在越来越懂{activeStudent.name.slice(1)}</small></div><span>本周</span></div>
                   <div className="bar-chart">
                     {weekChart.map((item) => (
                       <div className="bar-group" key={item.day}>
@@ -211,7 +211,7 @@ export default function ParentPage() {
                   <div className="routine-item"><i className="sleep-dot" /><time>21:30</time><p><strong>准备睡觉</strong><small>睡前预留 55 分钟</small></p></div>
                   <button className="add-exception" onClick={() => showToast('已打开当天例外设置')}><Plus />添加当天临时安排</button>
                 </section>
-                <section className="eye-rule-card"><span>👀</span><div><strong>{activeChild.grade}健康用眼规则</strong><p>连续近距离学习 {getFocusMinutes(activeChild.grade)} 分钟，完整休息 10 分钟；每 20 分钟远眺 20 秒。</p></div><button onClick={() => showToast('家长与学生都可以自定义')}>调整</button></section>
+                <section className="eye-rule-card"><span>👀</span><div><strong>{activeStudent.grade}健康用眼规则</strong><p>连续近距离学习 {getFocusMinutes(activeStudent.grade)} 分钟，完整休息 10 分钟；每 20 分钟远眺 20 秒。</p></div><button onClick={() => showToast('家长与学生都可以自定义')}>调整</button></section>
               </section>
             )}
 
@@ -278,7 +278,7 @@ export default function ParentPage() {
                 ))}
               </div>
               <p className="confidence-note">⚠️ 科学作业图片略模糊，已先排入计划并标记待确认，可稍后手动修改。</p>
-              <button className="generate-plan-button" onClick={closeScanWithPlan}><Sparkles />采用计划并同步给{activeChild.name.slice(1)}</button>
+              <button className="generate-plan-button" onClick={closeScanWithPlan}><Sparkles />采用计划并同步给{activeStudent.name.slice(1)}</button>
               <button className="text-button" onClick={() => showToast('你可以直接调整每项任务')}>先调整一下</button>
             </div>
           )}

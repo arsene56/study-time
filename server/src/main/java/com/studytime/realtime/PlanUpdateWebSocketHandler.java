@@ -14,37 +14,37 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class PlanUpdateWebSocketHandler extends TextWebSocketHandler {
-    private final ConcurrentHashMap<String, Set<WebSocketSession>> sessionsByChild = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Set<WebSocketSession>> sessionsByStudent = new ConcurrentHashMap<>();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        String childId = childId(session);
-        if (childId == null || childId.isBlank()) {
-            session.close(CloseStatus.BAD_DATA.withReason("childId is required"));
+        String studentId = studentId(session);
+        if (studentId == null || studentId.isBlank()) {
+            session.close(CloseStatus.BAD_DATA.withReason("studentId is required"));
             return;
         }
-        session.getAttributes().put("childId", childId);
-        sessionsByChild.computeIfAbsent(childId, ignored -> ConcurrentHashMap.newKeySet()).add(session);
+        session.getAttributes().put("studentId", studentId);
+        sessionsByStudent.computeIfAbsent(studentId, ignored -> ConcurrentHashMap.newKeySet()).add(session);
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        Object childId = session.getAttributes().get("childId");
-        if (childId != null) {
-            Set<WebSocketSession> sessions = sessionsByChild.get(childId.toString());
+        Object studentId = session.getAttributes().get("studentId");
+        if (studentId != null) {
+            Set<WebSocketSession> sessions = sessionsByStudent.get(studentId.toString());
             if (sessions != null) {
                 sessions.remove(session);
                 if (sessions.isEmpty()) {
-                    sessionsByChild.remove(childId.toString());
+                    sessionsByStudent.remove(studentId.toString());
                 }
             }
         }
     }
 
-    public void publish(String childId, String type) {
-        String payload = "{\"type\":\"" + type + "\",\"childId\":\"" + childId
+    public void publish(String studentId, String type) {
+        String payload = "{\"type\":\"" + type + "\",\"studentId\":\"" + studentId
                 + "\",\"occurredAt\":\"" + Instant.now() + "\"}";
-        Set<WebSocketSession> sessions = sessionsByChild.getOrDefault(childId, Set.of());
+        Set<WebSocketSession> sessions = sessionsByStudent.getOrDefault(studentId, Set.of());
         for (WebSocketSession session : sessions) {
             if (!session.isOpen()) {
                 continue;
@@ -57,10 +57,10 @@ public class PlanUpdateWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    private String childId(WebSocketSession session) {
+    private String studentId(WebSocketSession session) {
         if (session.getUri() == null) {
             return null;
         }
-        return UriComponentsBuilder.fromUri(session.getUri()).build().getQueryParams().getFirst("childId");
+        return UriComponentsBuilder.fromUri(session.getUri()).build().getQueryParams().getFirst("studentId");
     }
 }

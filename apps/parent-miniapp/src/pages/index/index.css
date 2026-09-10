@@ -5,13 +5,13 @@
 .subtitle { display: block; margin-top: 7px; color: #687d76; font-size: 15px; }
 .didi { width: 88px; height: 88px; }
 .notice { margin: 14px 3px; padding: 12px 16px; border-radius: 16px; color: #4b7468; background: #e8f6ef; font-size: 14px; }
-.childTabs { display: flex; gap: 10px; margin-bottom: 16px; }
-.childTab { display: flex; align-items: center; flex: 1; gap: 9px; margin: 0; padding: 10px 12px; border-radius: 18px; color: #60766f; background: #fff; line-height: 1.2; text-align: left; }
-.childTab.active { color: #245848; background: #dff5e9; box-shadow: inset 0 0 0 2px #64c4a5; }
+.studentTabs { display: flex; gap: 10px; margin-bottom: 16px; }
+.studentTab { display: flex; align-items: center; flex: 1; gap: 9px; margin: 0; padding: 10px 12px; border-radius: 18px; color: #60766f; background: #fff; line-height: 1.2; text-align: left; }
+.studentTab.active { color: #245848; background: #dff5e9; box-shadow: inset 0 0 0 2px #64c4a5; }
 .avatar { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 13px; color: white; background: #62bd9e; font-size: 17px; font-weight: 800; line-height: 36px; text-align: center; }
-.childName, .childGrade { display: block; }
-.childName { font-size: 15px; font-weight: 800; }
-.childGrade { margin-top: 3px; font-size: 12px; }
+.studentName, .studentGrade { display: block; }
+.studentName { font-size: 15px; font-weight: 800; }
+.studentGrade { margin-top: 3px; font-size: 12px; }
 .mainTabs { position: sticky; top: 8px; z-index: 5; display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-bottom: 16px; padding: 6px; border-radius: 18px; background: rgba(255,255,255,.94); box-shadow: 0 8px 24px rgba(56,101,87,.09); }
 .mainTabs button { margin: 0; padding: 8px 4px; border-radius: 13px; color: #6d817a; background: transparent; font-size: 13px; font-weight: 750; line-height: 1.4; }
 .mainTabs button.active { color: #255b4a; background: #dff5e9; }

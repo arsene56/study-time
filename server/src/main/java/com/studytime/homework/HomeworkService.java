@@ -8,7 +8,7 @@ import com.studytime.api.ApiModels.RecognitionCapabilityView;
 import com.studytime.api.ApiModels.SaveHomeworkTaskRequest;
 import com.studytime.domain.StudyTimeRepository;
 import com.studytime.domain.StudyTimeRepository.BatchRow;
-import com.studytime.domain.StudyTimeRepository.ChildRow;
+import com.studytime.domain.StudyTimeRepository.StudentRow;
 import com.studytime.domain.StudyTimeRepository.TaskRow;
 import com.studytime.homework.HomeworkTextParser.ParsedTask;
 import com.studytime.homework.PersonalizedEstimationService.Estimate;
@@ -56,77 +56,77 @@ public class HomeworkService {
     public DemoContextView demoContext() {
         return new DemoContextView(
                 "demo-family", "林家的作业时光", "demo-parent-mom", "林妈妈", "妈妈",
-                repository.findDemoChildren());
+                repository.findDemoStudents());
     }
 
     public RecognitionCapabilityView recognitionCapability() {
         return ocrGateway.capability();
     }
 
-    public PersonalizationProfileView personalizationProfile(String childId) {
-        return estimationService.profile(childId);
+    public PersonalizationProfileView personalizationProfile(String studentId) {
+        return estimationService.profile(studentId);
     }
 
     @Transactional
-    public HomeworkBatchView mockRecognize(String childId, MultipartFile file) {
-        ChildRow child = repository.requireChild(childId);
-        String objectKey = file == null || file.isEmpty() ? null : storage.store(childId, file);
+    public HomeworkBatchView mockRecognize(String studentId, MultipartFile file) {
+        StudentRow student = repository.requireStudent(studentId);
+        String objectKey = file == null || file.isEmpty() ? null : storage.store(studentId, file);
         String batchId = UUID.randomUUID().toString();
         repository.insertBatch(
-                batchId, child, objectKey, "MOCK_OCR", "PENDING_CONFIRMATION", "MOCK");
-        List<TaskSeed> seeds = defaultSeeds(child.grade());
+                batchId, student, objectKey, "MOCK_OCR", "PENDING_CONFIRMATION", "MOCK");
+        List<TaskSeed> seeds = defaultSeeds(student.grade());
         for (int index = 0; index < seeds.size(); index++) {
-            insertSeed(batchId, child, seeds.get(index), index);
+            insertSeed(batchId, student, seeds.get(index), index);
         }
         repository.updateBatchRecognition(
                 batchId, "PENDING_CONFIRMATION", "mock-" + batchId,
                 "语文：朗读《荷花》两遍\n数学：练习册第 32–33 页\n英语：Unit 2 单词跟读 3 遍\n科学：观察一株植物并记录",
                 98D, null);
-        recordActivity(child, "HOMEWORK_RECOGNIZED",
+        recordActivity(student, "HOMEWORK_RECOGNIZED",
                 "使用预置示例识别出 " + seeds.size() + " 项任务，等待确认");
-        updates.publish(childId, "HOMEWORK_RECOGNIZED");
+        updates.publish(studentId, "HOMEWORK_RECOGNIZED");
         return repository.getBatch(batchId);
     }
 
     @Transactional
-    public HomeworkBatchView recognize(String childId, MultipartFile file) {
+    public HomeworkBatchView recognize(String studentId, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("请先选择一张作业照片");
         }
-        ChildRow child = repository.requireChild(childId);
-        String objectKey = storage.store(childId, file);
+        StudentRow student = repository.requireStudent(studentId);
+        String objectKey = storage.store(studentId, file);
         String batchId = UUID.randomUUID().toString();
         String provider = ocrGateway.configuredProvider().toUpperCase(Locale.ROOT);
-        repository.insertBatch(batchId, child, objectKey, "REAL_OCR", "PROCESSING", provider);
+        repository.insertBatch(batchId, student, objectKey, "REAL_OCR", "PROCESSING", provider);
 
         try {
             OcrResult result = ocrGateway.recognize(readBytes(file));
-            List<ParsedTask> parsedTasks = textParser.parse(result, child.grade());
+            List<ParsedTask> parsedTasks = textParser.parse(result, student.grade());
             if (parsedTasks.isEmpty()) {
                 repository.updateBatchRecognition(
                         batchId, "NEEDS_MANUAL_ENTRY", result.requestId(), result.rawText(),
                         result.averageConfidence(), "未能从图片文字中拆分出明确作业，请手动添加");
-                recordActivity(child, "HOMEWORK_RECOGNITION_NEEDS_REVIEW", "图片已读取，但需要手动录入作业内容");
+                recordActivity(student, "HOMEWORK_RECOGNITION_NEEDS_REVIEW", "图片已读取，但需要手动录入作业内容");
             } else {
                 for (int index = 0; index < parsedTasks.size(); index++) {
                     ParsedTask task = parsedTasks.get(index);
-                    insertSeed(batchId, child, new TaskSeed(
+                    insertSeed(batchId, student, new TaskSeed(
                             task.subject(), task.title(), task.taskType(), task.icon(), task.baseMinutes(),
                             task.difficulty(), task.eyeLoad(), task.confidence(), task.ocrConfidence()), index);
                 }
                 repository.updateBatchRecognition(
                         batchId, "PENDING_CONFIRMATION", result.requestId(), result.rawText(),
                         result.averageConfidence(), null);
-                recordActivity(child, "HOMEWORK_RECOGNIZED",
+                recordActivity(student, "HOMEWORK_RECOGNIZED",
                         "真实 OCR 识别出 " + parsedTasks.size() + " 项任务，等待确认");
             }
         } catch (RuntimeException exception) {
             String message = safeError(exception.getMessage());
             repository.updateBatchRecognition(
                     batchId, "NEEDS_MANUAL_ENTRY", null, null, null, message);
-            recordActivity(child, "HOMEWORK_RECOGNITION_NEEDS_REVIEW", "自动识别未完成，已转为手动录入");
+            recordActivity(student, "HOMEWORK_RECOGNITION_NEEDS_REVIEW", "自动识别未完成，已转为手动录入");
         }
-        updates.publish(childId, "HOMEWORK_RECOGNIZED");
+        updates.publish(studentId, "HOMEWORK_RECOGNIZED");
         return repository.getBatch(batchId);
     }
 
@@ -136,16 +136,16 @@ public class HomeworkService {
         validateTaskRequest(request);
         int order = repository.nextTaskSortOrder(batchId);
         repository.insertTask(new TaskRow(
-                UUID.randomUUID().toString(), batchId, batch.childId(), request.subject().trim(),
+                UUID.randomUUID().toString(), batchId, batch.studentId(), request.subject().trim(),
                 request.title().trim(), request.taskType().trim(),
                 GradeTaskRules.icon(request.subject().trim(), request.taskType().trim()),
                 request.estimatedMinutes(), request.estimatedMinutes(), "MANUAL_OVERRIDE", 0, "HIGH",
                 "由家长手动录入", request.difficulty(), request.eyeLoad(), "HIGH", null, true,
                 "PENDING_CONFIRMATION", order));
         repository.markBatchPendingConfirmation(batchId);
-        recordActivity(repository.requireChild(batch.childId()), "HOMEWORK_TASK_ADDED",
+        recordActivity(repository.requireStudent(batch.studentId()), "HOMEWORK_TASK_ADDED",
                 "手动添加了“" + request.title().trim() + "”");
-        updates.publish(batch.childId(), "HOMEWORK_RECOGNIZED");
+        updates.publish(batch.studentId(), "HOMEWORK_RECOGNIZED");
         return repository.getBatch(batchId);
     }
 
@@ -153,19 +153,19 @@ public class HomeworkService {
     public HomeworkBatchView updateTask(String taskId, SaveHomeworkTaskRequest request) {
         validateTaskRequest(request);
         TaskRow current = repository.requireEditableTask(taskId);
-        ChildRow child = repository.requireChild(current.childId());
+        StudentRow student = repository.requireStudent(current.studentId());
         int refreshedBaseMinutes = GradeTaskRules.baselineMinutes(
-                child.grade(), request.title().trim(), request.taskType().trim());
+                student.grade(), request.title().trim(), request.taskType().trim());
         TaskRow updated = new TaskRow(
-                current.id(), current.batchId(), current.childId(), request.subject().trim(),
+                current.id(), current.batchId(), current.studentId(), request.subject().trim(),
                 request.title().trim(), request.taskType().trim(),
                 GradeTaskRules.icon(request.subject().trim(), request.taskType().trim()),
                 request.estimatedMinutes(), refreshedBaseMinutes, "MANUAL_OVERRIDE", 0, "HIGH",
                 "由家长确认时修订", request.difficulty(), request.eyeLoad(), "HIGH",
                 current.ocrConfidence(), true, current.status(), current.sortOrder());
         repository.updateTask(updated);
-        recordActivity(child, "HOMEWORK_TASK_UPDATED", "修订了“" + request.title().trim() + "”");
-        updates.publish(child.id(), "HOMEWORK_RECOGNIZED");
+        recordActivity(student, "HOMEWORK_TASK_UPDATED", "修订了“" + request.title().trim() + "”");
+        updates.publish(student.id(), "HOMEWORK_RECOGNIZED");
         return repository.getBatch(current.batchId());
     }
 
@@ -173,29 +173,29 @@ public class HomeworkService {
     public HomeworkBatchView deleteTask(String taskId) {
         TaskRow task = repository.requireEditableTask(taskId);
         repository.deleteTask(taskId);
-        ChildRow child = repository.requireChild(task.childId());
-        recordActivity(child, "HOMEWORK_TASK_DELETED", "删除了识别项“" + task.title() + "”");
-        updates.publish(child.id(), "HOMEWORK_RECOGNIZED");
+        StudentRow student = repository.requireStudent(task.studentId());
+        recordActivity(student, "HOMEWORK_TASK_DELETED", "删除了识别项“" + task.title() + "”");
+        updates.publish(student.id(), "HOMEWORK_RECOGNIZED");
         return repository.getBatch(task.batchId());
     }
 
     public PlanView confirmAndPlan(String batchId, LocalTime startTime) {
         PlanView plan = planningService.createPlan(batchId, startTime);
-        updates.publish(plan.childId(), "PLAN_CREATED");
+        updates.publish(plan.studentId(), "PLAN_CREATED");
         return plan;
     }
 
-    public PlanView todayPlan(String childId) {
-        repository.requireChild(childId);
-        return repository.findTodayPlan(childId)
+    public PlanView todayPlan(String studentId) {
+        repository.requireStudent(studentId);
+        return repository.findTodayPlan(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("今天还没有生成作业计划"));
     }
 
-    private void insertSeed(String batchId, ChildRow child, TaskSeed seed, int index) {
+    private void insertSeed(String batchId, StudentRow student, TaskSeed seed, int index) {
         Estimate estimate = estimationService.estimate(
-                child.id(), seed.subject(), seed.taskType(), seed.minutes());
+                student.id(), seed.subject(), seed.taskType(), seed.minutes());
         repository.insertTask(new TaskRow(
-                UUID.randomUUID().toString(), batchId, child.id(), seed.subject(), seed.title(),
+                UUID.randomUUID().toString(), batchId, student.id(), seed.subject(), seed.title(),
                 seed.taskType(), seed.icon(), estimate.minutes(), estimate.baseMinutes(), estimate.source(),
                 estimate.sampleSize(), estimate.confidence(), estimate.reason(), seed.difficulty(), seed.eyeLoad(),
                 seed.confidence(), seed.ocrConfidence(), false, "PENDING_CONFIRMATION", index));
@@ -221,9 +221,9 @@ public class HomeworkService {
         }
     }
 
-    private void recordActivity(ChildRow child, String action, String description) {
+    private void recordActivity(StudentRow student, String action, String description) {
         repository.insertActivity(
-                UUID.randomUUID().toString(), child.familyId(), child.id(), "demo-parent-mom", "林妈妈", "妈妈",
+                UUID.randomUUID().toString(), student.familyId(), student.id(), "demo-parent-mom", "林妈妈", "妈妈",
                 action, description);
     }
 

@@ -47,7 +47,7 @@ async function request<T>(options: Taro.request.Option): Promise<T> {
 
 export default function ParentHome() {
   const [context, setContext] = useState<DemoContext | null>(null);
-  const [childId, setChildId] = useState('demo-child-xiaoman');
+  const [studentId, setStudentId] = useState('demo-student-xiaoman');
   const [batch, setBatch] = useState<HomeworkBatch | null>(null);
   const [plan, setPlan] = useState<TodayPlan | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -73,18 +73,18 @@ export default function ParentHome() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('本地演示身份：林妈妈');
 
-  const child = useMemo(() => context?.children.find((item) => item.id === childId), [childId, context]);
+  const student = useMemo(() => context?.students.find((item) => item.id === studentId), [studentId, context]);
 
   const loadDashboard = useCallback(async (quiet = false) => {
     try {
       const contextData = context ?? await request<DemoContext>({ url: '/api/v1/demo/context', method: 'GET' });
       setContext(contextData);
       const [planResult, activityResult, weeklyResult, rewardResult, profileResult, capabilityResult] = await Promise.allSettled([
-        request<TodayPlan>({ url: `/api/v1/children/${childId}/today-plan`, method: 'GET' }),
-        request<Activity[]>({ url: `/api/v1/children/${childId}/activities`, method: 'GET' }),
-        request<WeeklyReport>({ url: `/api/v1/children/${childId}/weekly-report?weekStart=${currentMonday(weekOffset)}`, method: 'GET' }),
-        request<RewardStore>({ url: `/api/v1/families/${contextData.familyId}/rewards?childId=${childId}`, method: 'GET' }),
-        request<PersonalizationProfile>({ url: `/api/v1/children/${childId}/personalization-profile`, method: 'GET' }),
+        request<TodayPlan>({ url: `/api/v1/students/${studentId}/today-plan`, method: 'GET' }),
+        request<Activity[]>({ url: `/api/v1/students/${studentId}/activities`, method: 'GET' }),
+        request<WeeklyReport>({ url: `/api/v1/students/${studentId}/weekly-report?weekStart=${currentMonday(weekOffset)}`, method: 'GET' }),
+        request<RewardStore>({ url: `/api/v1/families/${contextData.familyId}/rewards?studentId=${studentId}`, method: 'GET' }),
+        request<PersonalizationProfile>({ url: `/api/v1/students/${studentId}/personalization-profile`, method: 'GET' }),
         request<RecognitionCapability>({ url: '/api/v1/recognition-capabilities', method: 'GET' }),
       ]);
       setPlan(planResult.status === 'fulfilled' ? planResult.value : null);
@@ -102,7 +102,7 @@ export default function ParentHome() {
     } catch (error) {
       setNotice(error instanceof Error ? error.message : '暂时无法连接服务');
     }
-  }, [childId, context, weekOffset]);
+  }, [studentId, context, weekOffset]);
 
   useDidShow(() => { void loadDashboard(true); });
 
@@ -112,16 +112,16 @@ export default function ParentHome() {
     let cancelled = false;
     let socket: Awaited<ReturnType<typeof Taro.connectSocket>> | undefined;
     const connect = async () => {
-      socket = await Taro.connectSocket({ url: `${wsBase}/ws/updates?childId=${childId}` });
+      socket = await Taro.connectSocket({ url: `${wsBase}/ws/updates?studentId=${studentId}` });
       if (cancelled) { socket.close({}); return; }
       socket.onMessage((event) => {
         const update = JSON.parse(event.data as string) as RealtimeEvent;
-        if (update.childId === childId) void loadDashboard(true);
+        if (update.studentId === studentId) void loadDashboard(true);
       });
     };
     void connect();
     return () => { cancelled = true; clearTimeout(initialRefresh); socket?.close({}); };
-  }, [childId, loadDashboard]);
+  }, [studentId, loadDashboard]);
 
   const choosePhoto = async () => {
     try {
@@ -136,11 +136,11 @@ export default function ParentHome() {
     try {
       let recognized: HomeworkBatch;
       if (photoPath) {
-        const response = await Taro.uploadFile({ url: `${apiBase}/api/v1/homework-batches/recognize?childId=${childId}`, filePath: photoPath, name: 'file' });
+        const response = await Taro.uploadFile({ url: `${apiBase}/api/v1/homework-batches/recognize?studentId=${studentId}`, filePath: photoPath, name: 'file' });
         if (response.statusCode < 200 || response.statusCode >= 300) throw new Error('照片上传失败');
         recognized = JSON.parse(response.data) as HomeworkBatch;
       } else {
-        recognized = await request<HomeworkBatch>({ url: `/api/v1/homework-batches/mock-recognize?childId=${childId}`, method: 'POST' });
+        recognized = await request<HomeworkBatch>({ url: `/api/v1/homework-batches/mock-recognize?studentId=${studentId}`, method: 'POST' });
       }
       setBatch(recognized); setTaskDrafts(draftsFromBatch(recognized));
       setNotice(recognized.recognitionError
@@ -230,7 +230,7 @@ export default function ParentHome() {
     setBusy(true);
     try {
       const updated = await request<WeeklyReport>({
-        url: `/api/v1/children/${childId}/weekly-comments`, method: 'POST', header: { 'Content-Type': 'application/json' },
+        url: `/api/v1/students/${studentId}/weekly-comments`, method: 'POST', header: { 'Content-Type': 'application/json' },
         data: { ...parentActor, content: comment.trim(), weekStart: weekly?.weekStart },
       });
       setWeekly(updated); setComment(''); setNotice('鼓励已写入家庭鼓励墙');
@@ -248,7 +248,7 @@ export default function ParentHome() {
     setBusy(true);
     try {
       const updated = await request<WeeklyReport>({
-        url: `/api/v1/children/${childId}/weekly-goal`, method: 'POST', header: { 'Content-Type': 'application/json' },
+        url: `/api/v1/students/${studentId}/weekly-goal`, method: 'POST', header: { 'Content-Type': 'application/json' },
         data: { ...parentActor, targetTasks, targetFocusMinutes, bonusStars },
       });
       setWeekly(updated); setNotice('本周成长目标已同步到学生端');
@@ -263,7 +263,7 @@ export default function ParentHome() {
     setBusy(true);
     try {
       const updated = await request<RewardStore>({
-        url: `/api/v1/families/${context.familyId}/rewards?childId=${childId}`, method: 'POST', header: { 'Content-Type': 'application/json' },
+        url: `/api/v1/families/${context.familyId}/rewards?studentId=${studentId}`, method: 'POST', header: { 'Content-Type': 'application/json' },
         data: { ...parentActor, name: rewardName.trim(), icon: '🎁', requiredStars: stars, category: 'WISH' },
       });
       setRewards(updated); setRewardName(''); setNotice('家庭自定义奖励已添加');
@@ -286,7 +286,7 @@ export default function ParentHome() {
     <ScrollView className="page" scrollY>
       <View className="hero"><View><Text className="brand">作业时光 · 家长端</Text><Text className="heroTitle">晚上好，林妈妈</Text><Text className="subtitle">自主规划，快乐成长</Text></View><Image className="didi" src={didiMascot} mode="aspectFit" /></View>
       <View className="notice"><Text>{notice}</Text></View>
-      <View className="childTabs">{context?.children.map((item) => <Button key={item.id} className={`childTab ${item.id === childId ? 'active' : ''}`} onClick={() => { setChildId(item.id); setBatch(null); setTaskDrafts({}); }}><Text className="avatar">{item.name.slice(-1)}</Text><View><Text className="childName">{item.name}</Text><Text className="childGrade">{gradeLabel(item.grade)}</Text></View></Button>)}</View>
+      <View className="studentTabs">{context?.students.map((item) => <Button key={item.id} className={`studentTab ${item.id === studentId ? 'active' : ''}`} onClick={() => { setStudentId(item.id); setBatch(null); setTaskDrafts({}); }}><Text className="avatar">{item.name.slice(-1)}</Text><View><Text className="studentName">{item.name}</Text><Text className="studentGrade">{gradeLabel(item.grade)}</Text></View></Button>)}</View>
       <View className="mainTabs">{([['homework','录入'],['plan','计划'],['profile','个性化'],['growth','周报'],['rewards','奖励']] as [Tab,string][]).map(([id,label]) => <Button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</Button>)}</View>
 
       {tab === 'homework' && <>
@@ -313,7 +313,7 @@ export default function ParentHome() {
 
       {tab === 'plan' && <>
         {!plan ? <View className="card emptyCard"><Text>今天还没有计划，请先录入作业。</Text></View> : <View className="card planCard">
-          <View className="cardHead"><View><Text className="step">今日计划 · 版本 {plan.version}</Text><Text className="cardTitle">{child?.name}预计 {plan.plannedEndTime} 完成</Text></View><Text className="readyPill">实时同步</Text></View>
+          <View className="cardHead"><View><Text className="step">今日计划 · 版本 {plan.version}</Text><Text className="cardTitle">{student?.name}预计 {plan.plannedEndTime} 完成</Text></View><Text className="readyPill">实时同步</Text></View>
           {plan.warningMessage && <View className="warning"><Text>⏰ {plan.warningMessage}</Text></View>}
           <Text className="buffer">已预留睡前活动 {plan.bedtimeBufferMinutes} 分钟 · 上下按钮可调整顺序</Text>
           {plan.items.map((item,index) => <View className={`planItem ${item.status === 'DONE' || item.status === 'SKIPPED' ? 'done' : ''}`} key={item.id}><Text className="planTime">{item.plannedStart}</Text><Text className="taskEmoji">{item.icon}</Text><View className="taskText"><Text className="taskTitle">{item.title}</Text><Text className="taskSubject">{item.subject} · {item.plannedStart}–{item.plannedEnd}</Text></View><View className="planControls"><Text className={`itemStatus status-${item.status.toLowerCase()}`}>{item.status === 'DONE' ? '已完成' : item.status === 'SKIPPED' ? '已跳过' : item.status === 'ACTIVE' ? '进行中' : '待完成'}</Text><View className="orderRow"><Button disabled={busy || index === 0} onClick={() => void move(index,-1)}>↑</Button><Button disabled={busy || index === plan.items.length-1} onClick={() => void move(index,1)}>↓</Button></View></View></View>)}
@@ -322,7 +322,7 @@ export default function ParentHome() {
       </>}
 
       {tab === 'profile' && <View className="card profileCard">
-        <View className="cardHead"><View><Text className="step">最近 60 天 · 滚动学习</Text><Text className="cardTitle">{child?.name}的时间曲线</Text></View><Text className={`profileLevel level-${profile?.level.toLowerCase()}`}>{profile?.level === 'STABLE' ? '稳定画像' : profile?.level === 'LEARNING' ? '学习中' : '刚开始'}</Text></View>
+        <View className="cardHead"><View><Text className="step">最近 60 天 · 滚动学习</Text><Text className="cardTitle">{student?.name}的时间曲线</Text></View><Text className={`profileLevel level-${profile?.level.toLowerCase()}`}>{profile?.level === 'STABLE' ? '稳定画像' : profile?.level === 'LEARNING' ? '学习中' : '刚开始'}</Text></View>
         {profile && <><View className="profileHero"><View><Text>{profile.totalSamples}</Text><Text>有效完成样本</Text></View><View><Text>{profile.overallPacePercent}%</Text><Text>相对年级基准</Text></View><View><Text>{profile.confidence === 'HIGH' ? '高' : profile.confidence === 'MEDIUM' ? '中' : '低'}</Text><Text>估时可信度</Text></View></View>
           <View className="growthMessage"><Text>🤖</Text><View><Text>{profile.summary}</Text><Text>新近记录权重更高，单次异常用时不会直接改变后续计划。</Text></View></View>
           <Text className="sectionLabel">分学科节奏</Text>
@@ -331,7 +331,7 @@ export default function ParentHome() {
       </View>}
 
       {tab === 'growth' && <View className="card">
-        <View className="cardHead"><View><Text className="step">{weekly?.weekStart} 至 {weekly?.weekEnd}</Text><Text className="cardTitle">{child?.name}的成长周报</Text></View><View className="weekControls"><Button onClick={() => setWeekOffset((value) => value - 1)}>‹</Button><Button disabled={weekOffset === 0} onClick={() => setWeekOffset((value) => Math.min(0,value + 1))}>›</Button></View></View>
+        <View className="cardHead"><View><Text className="step">{weekly?.weekStart} 至 {weekly?.weekEnd}</Text><Text className="cardTitle">{student?.name}的成长周报</Text></View><View className="weekControls"><Button onClick={() => setWeekOffset((value) => value - 1)}>‹</Button><Button disabled={weekOffset === 0} onClick={() => setWeekOffset((value) => Math.min(0,value + 1))}>›</Button></View></View>
         {weekly && <><View className="metricGrid"><View><Text>{weekly.completionRate}%</Text><Text>完成率</Text></View><View><Text>{weekly.focusedMinutes} 分钟</Text><Text>专注时光</Text></View><View><Text>{weekly.streakDays} 天</Text><Text>连续打卡</Text></View></View>
           <View className="growthMessage"><Text>🤖</Text><View><Text>{weekly.growthMessage}</Text><Text>{weekly.comparison.trendText}</Text></View></View>
           <Text className="sectionLabel">一周趋势</Text><View className="dailyBars">{weekly.dailyProgress.map((day) => <View key={day.date}><View className="bar"><View style={{ height: `${Math.max(day.completionRate ? 10 : 0,day.completionRate)}%` }} /></View><Text>{day.dayLabel.slice(1)}</Text><Text>{day.completedTasks}/{day.totalTasks}</Text></View>)}</View>
@@ -344,7 +344,7 @@ export default function ParentHome() {
       </View>}
 
       {tab === 'rewards' && <View className="card">
-        <View className="cardHead"><View><Text className="step">当前 {rewards?.childStars ?? 0} 颗星</Text><Text className="cardTitle">奖励与审批</Text></View><Text className="statusPill">虚拟 + 家庭</Text></View>
+        <View className="cardHead"><View><Text className="step">当前 {rewards?.studentStars ?? 0} 颗星</Text><Text className="cardTitle">奖励与审批</Text></View><Text className="statusPill">虚拟 + 家庭</Text></View>
         <View className="rewardList">{rewards?.rewards.map((reward) => <View className={`rewardItem ${reward.equipped ? 'equipped' : ''}`} key={reward.id}>
           <Text className="rewardIcon">{reward.icon}</Text>
           <View className="taskText"><Text className="taskTitle">{reward.name}</Text><Text className="taskSubject">{reward.requiredStars} 颗星 · {reward.sourceType === 'BUILTIN' ? '内置奖励' : `由${reward.createdByName}设置`}</Text></View>

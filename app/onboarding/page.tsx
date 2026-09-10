@@ -13,7 +13,7 @@ export default function OnboardingPage() {
   const { setFamilyReady } = usePrototype();
   const [step, setStep] = useState(0);
   const [relation, setRelation] = useState('妈妈');
-  const [selectedChild, setSelectedChild] = useState('xiaoman');
+  const [selectedStudent, setSelectedStudent] = useState('xiaoman');
   const [bound, setBound] = useState(false);
 
   function finish() {
@@ -67,13 +67,13 @@ export default function OnboardingPage() {
           )}
 
           {step === 2 && (
-            <div className="onboarding-panel children-panel">
+            <div className="onboarding-panel students-panel">
               <span className="panel-icon"><Sparkles /></span><h2>添加需要规划作业的学生</h2><p>我们准备了两名演示学生，用来体验多名学生切换和独立数据。</p>
-              <div className="onboarding-child-list">
-                <button className={selectedChild === 'xiaoman' ? 'selected' : ''} onClick={() => setSelectedChild('xiaoman')}><span className="child-demo-avatar mint">满</span><p><strong>林小满</strong><small>三年级 · 默认专注 25 分钟</small></p><b>{selectedChild === 'xiaoman' ? <Check /> : '编辑'}</b></button>
-                <button className={selectedChild === 'keke' ? 'selected' : ''} onClick={() => setSelectedChild('keke')}><span className="child-demo-avatar orange">可</span><p><strong>林可可</strong><small>一年级 · 默认专注 20 分钟</small></p><b>{selectedChild === 'keke' ? <Check /> : '编辑'}</b></button>
+              <div className="onboarding-student-list">
+                <button className={selectedStudent === 'xiaoman' ? 'selected' : ''} onClick={() => setSelectedStudent('xiaoman')}><span className="student-demo-avatar mint">满</span><p><strong>林小满</strong><small>三年级 · 默认专注 25 分钟</small></p><b>{selectedStudent === 'xiaoman' ? <Check /> : '编辑'}</b></button>
+                <button className={selectedStudent === 'keke' ? 'selected' : ''} onClick={() => setSelectedStudent('keke')}><span className="student-demo-avatar orange">可</span><p><strong>林可可</strong><small>一年级 · 默认专注 20 分钟</small></p><b>{selectedStudent === 'keke' ? <Check /> : '编辑'}</b></button>
               </div>
-              <button className="add-another-child"><Plus />再添加一名学生</button>
+              <button className="add-another-student"><Plus />再添加一名学生</button>
               <div className="isolation-note"><ShieldCheck /><p><strong>多学生数据隔离</strong><small>每名学生有独立的任务、用时曲线、星星和奖励记录。</small></p></div>
             </div>
           )}

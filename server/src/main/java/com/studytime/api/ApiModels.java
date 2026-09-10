@@ -12,7 +12,7 @@ public final class ApiModels {
     private ApiModels() {
     }
 
-    public record ChildView(String id, String name, int grade, String bedtime, int stars) {
+    public record StudentView(String id, String name, int grade, String bedtime, int stars) {
     }
 
     public record DemoContextView(
@@ -21,7 +21,7 @@ public final class ApiModels {
             String parentId,
             String parentName,
             String parentRelation,
-            List<ChildView> children) {
+            List<StudentView> students) {
     }
 
     public record RecognizedTaskView(
@@ -46,7 +46,7 @@ public final class ApiModels {
 
     public record HomeworkBatchView(
             String id,
-            String childId,
+            String studentId,
             String status,
             String recognitionMode,
             String sourceObjectKey,
@@ -77,7 +77,7 @@ public final class ApiModels {
     }
 
     public record PersonalizationProfileView(
-            String childId,
+            String studentId,
             int totalSamples,
             String level,
             String confidence,
@@ -144,7 +144,7 @@ public final class ApiModels {
 
     public record PlanView(
             String id,
-            String childId,
+            String studentId,
             String planDate,
             String startTime,
             String originalEndTime,
@@ -296,7 +296,7 @@ public final class ApiModels {
     }
 
     public record RewardStoreView(
-            int childStars,
+            int studentStars,
             String equippedSkinRewardId,
             List<RewardView> rewards,
             List<RewardRedemptionView> redemptions,
@@ -314,7 +314,7 @@ public final class ApiModels {
     }
 
     public record RedeemRewardRequest(
-            @NotBlank String childId,
+            @NotBlank String studentId,
             String actorId,
             String actorName,
             String actorRelation) {
@@ -328,7 +328,7 @@ public final class ApiModels {
     }
 
     public record EquipSkinRequest(
-            @NotBlank String childId,
+            @NotBlank String studentId,
             String actorId,
             String actorName,
             String actorRelation) {

@@ -3,27 +3,27 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   initialActivities,
-  initialChildren,
+  initialStudents,
   initialRewards,
   type ActivityEntry,
-  type ChildProfile,
+  type StudentProfile,
   type RewardItem,
 } from '@/lib/prototype-data';
 
 type DemoState = {
-  activeChildId: string;
-  children: ChildProfile[];
+  activeStudentId: string;
+  students: StudentProfile[];
   activities: ActivityEntry[];
   rewards: RewardItem[];
   familyReady: boolean;
 };
 
 type DemoContextValue = DemoState & {
-  activeChild: ChildProfile;
-  setActiveChild: (id: string) => void;
+  activeStudent: StudentProfile;
+  setActiveStudent: (id: string) => void;
   setFamilyReady: (ready: boolean) => void;
   claimPlan: () => void;
-  moveTask: (taskId: string, direction: -1 | 1, actor?: 'child' | 'parent') => void;
+  moveTask: (taskId: string, direction: -1 | 1, actor?: 'student' | 'parent') => void;
   startTask: (taskId: string) => void;
   pauseTask: (taskId: string) => void;
   completeTask: (taskId: string, evidence?: boolean) => void;
@@ -38,8 +38,8 @@ type DemoContextValue = DemoState & {
 const storageKey = 'homework-time-prototype-v1';
 
 const initialState: DemoState = {
-  activeChildId: 'xiaoman',
-  children: initialChildren,
+  activeStudentId: 'xiaoman',
+  students: initialStudents,
   activities: initialActivities,
   rewards: initialRewards,
   familyReady: false,
@@ -80,7 +80,7 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem(storageKey, JSON.stringify(state));
   }, [hydrated, state]);
 
-  const activeChild = state.children.find((child) => child.id === state.activeChildId) ?? state.children[0];
+  const activeStudent = state.students.find((student) => student.id === state.activeStudentId) ?? state.students[0];
 
   const addActivity = useCallback((entry: Omit<ActivityEntry, 'id' | 'time'>) => {
     setState((previous) => ({
@@ -89,77 +89,77 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
-  const updateActiveChild = useCallback((updater: (child: ChildProfile) => ChildProfile) => {
+  const updateActiveStudent = useCallback((updater: (student: StudentProfile) => StudentProfile) => {
     setState((previous) => ({
       ...previous,
-      children: previous.children.map((child) => child.id === previous.activeChildId ? updater(child) : child),
+      students: previous.students.map((student) => student.id === previous.activeStudentId ? updater(student) : student),
     }));
   }, []);
 
   const value = useMemo<DemoContextValue>(() => ({
     ...state,
-    activeChild,
-    setActiveChild: (id) => setState((previous) => ({ ...previous, activeChildId: id })),
+    activeStudent,
+    setActiveStudent: (id) => setState((previous) => ({ ...previous, activeStudentId: id })),
     setFamilyReady: (ready) => setState((previous) => ({ ...previous, familyReady: ready })),
     claimPlan: () => {
-      updateActiveChild((child) => ({ ...child, claimed: true }));
-      addActivity({ childId: state.activeChildId, actor: activeChild.name, relation: '学生', action: '认领了今天的计划，准备开始', tone: 'orange' });
+      updateActiveStudent((student) => ({ ...student, claimed: true }));
+      addActivity({ studentId: state.activeStudentId, actor: activeStudent.name, relation: '学生', action: '认领了今天的计划，准备开始', tone: 'orange' });
     },
-    moveTask: (taskId, direction, actor = 'child') => {
-      updateActiveChild((child) => {
-        const tasks = [...child.tasks];
+    moveTask: (taskId, direction, actor = 'student') => {
+      updateActiveStudent((student) => {
+        const tasks = [...student.tasks];
         const index = tasks.findIndex((task) => task.id === taskId);
         const target = index + direction;
-        if (index < 0 || target < 0 || target >= tasks.length) return child;
+        if (index < 0 || target < 0 || target >= tasks.length) return student;
         [tasks[index], tasks[target]] = [tasks[target], tasks[index]];
-        return { ...child, tasks };
+        return { ...student, tasks };
       });
       addActivity(actor === 'parent'
-        ? { childId: state.activeChildId, actor: '妈妈', relation: '妈妈', action: '调整了两项任务的顺序', tone: 'mint' }
-        : { childId: state.activeChildId, actor: activeChild.name, relation: '学生', action: '自主调整了两项任务的顺序', tone: 'orange' });
+        ? { studentId: state.activeStudentId, actor: '妈妈', relation: '妈妈', action: '调整了两项任务的顺序', tone: 'mint' }
+        : { studentId: state.activeStudentId, actor: activeStudent.name, relation: '学生', action: '自主调整了两项任务的顺序', tone: 'orange' });
     },
     startTask: (taskId) => {
-      updateActiveChild((child) => ({
-        ...child,
-        tasks: child.tasks.map((task) => ({
+      updateActiveStudent((student) => ({
+        ...student,
+        tasks: student.tasks.map((task) => ({
           ...task,
           status: task.id === taskId ? 'active' : task.status === 'active' ? 'paused' : task.status,
         })),
       }));
     },
-    pauseTask: (taskId) => updateActiveChild((child) => ({
-      ...child,
-      tasks: child.tasks.map((task) => task.id === taskId ? { ...task, status: 'paused' } : task),
+    pauseTask: (taskId) => updateActiveStudent((student) => ({
+      ...student,
+      tasks: student.tasks.map((task) => task.id === taskId ? { ...task, status: 'paused' } : task),
     })),
     completeTask: (taskId, evidence = false) => {
-      const task = activeChild.tasks.find((item) => item.id === taskId);
-      updateActiveChild((child) => ({
-        ...child,
-        stars: child.stars + (task?.kind === 'break' ? 1 : 5),
-        tasks: child.tasks.map((item) => item.id === taskId
+      const task = activeStudent.tasks.find((item) => item.id === taskId);
+      updateActiveStudent((student) => ({
+        ...student,
+        stars: student.stars + (task?.kind === 'break' ? 1 : 5),
+        tasks: student.tasks.map((item) => item.id === taskId
           ? { ...item, status: 'done', evidence: evidence || item.evidence, actualSeconds: item.actualSeconds || item.estimatedMinutes * 60 }
           : item),
       }));
-      if (task) addActivity({ childId: state.activeChildId, actor: activeChild.name, relation: '学生', action: `完成了“${task.title}”，获得 ${task.kind === 'break' ? 1 : 5} 颗星`, tone: 'orange' });
+      if (task) addActivity({ studentId: state.activeStudentId, actor: activeStudent.name, relation: '学生', action: `完成了“${task.title}”，获得 ${task.kind === 'break' ? 1 : 5} 颗星`, tone: 'orange' });
     },
-    tickTask: (taskId) => updateActiveChild((child) => ({
-      ...child,
-      tasks: child.tasks.map((task) => task.id === taskId ? { ...task, actualSeconds: task.actualSeconds + 1 } : task),
+    tickTask: (taskId) => updateActiveStudent((student) => ({
+      ...student,
+      tasks: student.tasks.map((task) => task.id === taskId ? { ...task, actualSeconds: task.actualSeconds + 1 } : task),
     })),
     handleOverrun: (taskId, decision) => {
-      updateActiveChild((child) => {
-        const selected = child.tasks.find((task) => task.id === taskId);
-        let tasks = child.tasks.map((task) => task.id === taskId
+      updateActiveStudent((student) => {
+        const selected = student.tasks.find((task) => task.id === taskId);
+        let tasks = student.tasks.map((task) => task.id === taskId
           ? { ...task, status: decision === 'skip' ? 'skipped' as const : 'active' as const, needsHelp: decision === 'skip' }
           : task);
         if (decision === 'skip' && selected) {
           tasks = [...tasks.filter((task) => task.id !== taskId), tasks.find((task) => task.id === taskId)!];
         }
-        return { ...child, tasks, plannedEnd: addMinutes(child.plannedEnd, 30) };
+        return { ...student, tasks, plannedEnd: addMinutes(student.plannedEnd, 30) };
       });
       addActivity({
-        childId: state.activeChildId,
-        actor: activeChild.name,
+        studentId: state.activeStudentId,
+        actor: activeStudent.name,
         relation: '学生',
         action: decision === 'skip' ? '暂时跳过了一项困难作业，已向家长求助' : '选择继续挑战超时作业，剩余计划已自动更新',
         tone: decision === 'skip' ? 'blue' : 'orange',
@@ -170,7 +170,7 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
         ...previous,
         rewards: [{ id: `r-${Date.now()}`, title, stars, icon: '✨', custom: true, status: 'pending' }, ...previous.rewards],
       }));
-      addActivity({ childId: state.activeChildId, actor: activeChild.name, relation: '学生', action: `发起了新奖励“${title}”的审批`, tone: 'orange' });
+      addActivity({ studentId: state.activeStudentId, actor: activeStudent.name, relation: '学生', action: `发起了新奖励“${title}”的审批`, tone: 'orange' });
     },
     approveReward: (rewardId) => setState((previous) => ({
       ...previous,
@@ -178,16 +178,16 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
     })),
     redeemReward: (rewardId) => {
       const reward = state.rewards.find((item) => item.id === rewardId);
-      if (!reward || reward.status !== 'available' || activeChild.stars < reward.stars) return false;
-      updateActiveChild((child) => ({ ...child, stars: child.stars - reward.stars }));
-      addActivity({ childId: state.activeChildId, actor: activeChild.name, relation: '学生', action: `兑换了“${reward.title}”`, tone: 'orange' });
+      if (!reward || reward.status !== 'available' || activeStudent.stars < reward.stars) return false;
+      updateActiveStudent((student) => ({ ...student, stars: student.stars - reward.stars }));
+      addActivity({ studentId: state.activeStudentId, actor: activeStudent.name, relation: '学生', action: `兑换了“${reward.title}”`, tone: 'orange' });
       return true;
     },
     resetDemo: () => {
       window.localStorage.removeItem(storageKey);
       setState(initialState);
     },
-  }), [activeChild, addActivity, state, updateActiveChild]);
+  }), [activeStudent, addActivity, state, updateActiveStudent]);
 
   return <DemoContext.Provider value={value}>{children}</DemoContext.Provider>;
 }

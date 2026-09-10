@@ -36,14 +36,14 @@ public class GrowthRepository {
             String rewardId,
             String rewardName,
             int requiredStars,
-            String childId,
+            String studentId,
             String familyId,
             String status) {
     }
 
     public record WeeklyGoalRow(
             String id,
-            String childId,
+            String studentId,
             LocalDate weekStart,
             int targetTasks,
             int targetFocusMinutes,
@@ -52,7 +52,7 @@ public class GrowthRepository {
             LocalDateTime claimedAt) {
     }
 
-    public WeeklyTotals weeklyTotals(String childId, LocalDate weekStart, LocalDate weekEndExclusive) {
+    public WeeklyTotals weeklyTotals(String studentId, LocalDate weekStart, LocalDate weekEndExclusive) {
         int[] taskTotals = jdbc.sql("""
                         SELECT COUNT(*) AS total_tasks,
                                SUM(CASE WHEN item.status = 'DONE' THEN 1 ELSE 0 END) AS completed_tasks,
@@ -60,12 +60,12 @@ public class GrowthRepository {
                                    AS focused_seconds
                         FROM plan_items item
                         JOIN plans plan ON plan.id = item.plan_id
-                        WHERE plan.child_id = :childId
+                        WHERE plan.student_id = :studentId
                           AND plan.plan_date >= :weekStart
                           AND plan.plan_date < :weekEnd
                           AND item.kind = 'HOMEWORK'
                         """)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("weekStart", weekStart)
                 .param("weekEnd", weekEndExclusive)
                 .query((rs, rowNum) -> new int[]{
@@ -76,12 +76,12 @@ public class GrowthRepository {
         int stars = jdbc.sql("""
                         SELECT COALESCE(SUM(amount), 0)
                         FROM star_transactions
-                        WHERE child_id = :childId
+                        WHERE student_id = :studentId
                           AND amount > 0
                           AND created_at >= :weekStart
                           AND created_at < :weekEnd
                         """)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("weekStart", weekStart)
                 .param("weekEnd", weekEndExclusive)
                 .query(Integer.class)
@@ -90,7 +90,7 @@ public class GrowthRepository {
     }
 
     public List<SubjectSummaryView> subjectSummaries(
-            String childId,
+            String studentId,
             LocalDate weekStart,
             LocalDate weekEndExclusive) {
         return jdbc.sql("""
@@ -100,7 +100,7 @@ public class GrowthRepository {
                                ROUND(AVG(actual_seconds) / 60.0) AS average_actual_minutes
                         FROM plan_items item
                         JOIN plans plan ON plan.id = item.plan_id
-                        WHERE plan.child_id = :childId
+                        WHERE plan.student_id = :studentId
                           AND item.kind = 'HOMEWORK'
                           AND item.status = 'DONE'
                           AND plan.plan_date >= :weekStart
@@ -108,7 +108,7 @@ public class GrowthRepository {
                         GROUP BY subject
                         ORDER BY completed_tasks DESC, subject
                         """)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("weekStart", weekStart)
                 .param("weekEnd", weekEndExclusive)
                 .query((rs, rowNum) -> new SubjectSummaryView(
@@ -118,7 +118,7 @@ public class GrowthRepository {
     }
 
     public List<DailyProgressView> dailyProgress(
-            String childId,
+            String studentId,
             LocalDate weekStart,
             LocalDate weekEndExclusive) {
         Map<LocalDate, int[]> totals = jdbc.sql("""
@@ -129,12 +129,12 @@ public class GrowthRepository {
                                    AS focused_seconds
                         FROM plans plan
                         JOIN plan_items item ON item.plan_id = plan.id AND item.kind = 'HOMEWORK'
-                        WHERE plan.child_id = :childId
+                        WHERE plan.student_id = :studentId
                           AND plan.plan_date >= :weekStart
                           AND plan.plan_date < :weekEnd
                         GROUP BY plan.plan_date
                         """)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("weekStart", weekStart)
                 .param("weekEnd", weekEndExclusive)
                 .query((rs, rowNum) -> Map.entry(
@@ -155,66 +155,66 @@ public class GrowthRepository {
                 .toList();
     }
 
-    public int lifetimeCompletedTasks(String childId) {
+    public int lifetimeCompletedTasks(String studentId) {
         return jdbc.sql("""
                         SELECT COUNT(*) FROM homework_tasks
-                        WHERE child_id = :childId AND status = 'DONE'
+                        WHERE student_id = :studentId AND status = 'DONE'
                         """)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .query(Integer.class)
                 .single();
     }
 
-    public List<LocalDate> completionDates(String childId) {
+    public List<LocalDate> completionDates(String studentId) {
         return jdbc.sql("""
                         SELECT plan.plan_date AS completion_date
                         FROM plans plan
                         JOIN plan_items item ON item.plan_id = plan.id AND item.kind = 'HOMEWORK'
-                        WHERE plan.child_id = :childId AND plan.plan_date <= CURRENT_DATE
+                        WHERE plan.student_id = :studentId AND plan.plan_date <= CURRENT_DATE
                         GROUP BY plan.id, plan.plan_date
                         HAVING COUNT(*) > 0
                            AND SUM(CASE WHEN item.status = 'DONE' THEN 1 ELSE 0 END) = COUNT(*)
                         ORDER BY plan.plan_date DESC
                         """)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .query((rs, rowNum) -> rs.getDate("completion_date").toLocalDate())
                 .list();
     }
 
-    public Map<String, LocalDateTime> unlockedBadges(String childId) {
+    public Map<String, LocalDateTime> unlockedBadges(String studentId) {
         return jdbc.sql("""
                         SELECT badge_code, unlocked_at
-                        FROM child_badges
-                        WHERE child_id = :childId
+                        FROM student_badges
+                        WHERE student_id = :studentId
                         """)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .query((rs, rowNum) -> Map.entry(
                         rs.getString("badge_code"), rs.getTimestamp("unlocked_at").toLocalDateTime()))
                 .list().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
-    public boolean unlockBadge(String childId, String badgeCode) {
+    public boolean unlockBadge(String studentId, String badgeCode) {
         return jdbc.sql("""
-                        INSERT IGNORE INTO child_badges (id, child_id, badge_code)
-                        VALUES (:id, :childId, :badgeCode)
+                        INSERT IGNORE INTO student_badges (id, student_id, badge_code)
+                        VALUES (:id, :studentId, :badgeCode)
                         """)
                 .param("id", UUID.randomUUID().toString())
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("badgeCode", badgeCode)
                 .update() == 1;
     }
 
-    public Optional<WeeklyGoalRow> weeklyGoal(String childId, LocalDate weekStart) {
+    public Optional<WeeklyGoalRow> weeklyGoal(String studentId, LocalDate weekStart) {
         return jdbc.sql("""
-                        SELECT id, child_id, week_start, target_tasks, target_focus_minutes,
+                        SELECT id, student_id, week_start, target_tasks, target_focus_minutes,
                                bonus_stars, status, claimed_at
                         FROM weekly_goals
-                        WHERE child_id = :childId AND week_start = :weekStart
+                        WHERE student_id = :studentId AND week_start = :weekStart
                         """)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("weekStart", weekStart)
                 .query((rs, rowNum) -> new WeeklyGoalRow(
-                        rs.getString("id"), rs.getString("child_id"),
+                        rs.getString("id"), rs.getString("student_id"),
                         rs.getDate("week_start").toLocalDate(), rs.getInt("target_tasks"),
                         rs.getInt("target_focus_minutes"), rs.getInt("bonus_stars"),
                         rs.getString("status"), rs.getTimestamp("claimed_at") == null
@@ -222,18 +222,18 @@ public class GrowthRepository {
                 .optional();
     }
 
-    public WeeklyGoalRow requireWeeklyGoalForUpdate(String childId, LocalDate weekStart) {
+    public WeeklyGoalRow requireWeeklyGoalForUpdate(String studentId, LocalDate weekStart) {
         return jdbc.sql("""
-                        SELECT id, child_id, week_start, target_tasks, target_focus_minutes,
+                        SELECT id, student_id, week_start, target_tasks, target_focus_minutes,
                                bonus_stars, status, claimed_at
                         FROM weekly_goals
-                        WHERE child_id = :childId AND week_start = :weekStart
+                        WHERE student_id = :studentId AND week_start = :weekStart
                         FOR UPDATE
                         """)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("weekStart", weekStart)
                 .query((rs, rowNum) -> new WeeklyGoalRow(
-                        rs.getString("id"), rs.getString("child_id"),
+                        rs.getString("id"), rs.getString("student_id"),
                         rs.getDate("week_start").toLocalDate(), rs.getInt("target_tasks"),
                         rs.getInt("target_focus_minutes"), rs.getInt("bonus_stars"),
                         rs.getString("status"), rs.getTimestamp("claimed_at") == null
@@ -245,7 +245,7 @@ public class GrowthRepository {
     public void upsertWeeklyGoal(
             String id,
             String familyId,
-            String childId,
+            String studentId,
             LocalDate weekStart,
             int targetTasks,
             int targetFocusMinutes,
@@ -253,9 +253,9 @@ public class GrowthRepository {
             String actorId) {
         jdbc.sql("""
                         INSERT INTO weekly_goals
-                            (id, family_id, child_id, week_start, target_tasks, target_focus_minutes,
+                            (id, family_id, student_id, week_start, target_tasks, target_focus_minutes,
                              bonus_stars, status, created_by)
-                        VALUES (:id, :familyId, :childId, :weekStart, :targetTasks, :targetFocusMinutes,
+                        VALUES (:id, :familyId, :studentId, :weekStart, :targetTasks, :targetFocusMinutes,
                                 :bonusStars, 'ACTIVE', :actorId)
                         ON DUPLICATE KEY UPDATE
                             target_tasks = VALUES(target_tasks),
@@ -265,7 +265,7 @@ public class GrowthRepository {
                         """)
                 .param("id", id)
                 .param("familyId", familyId)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("weekStart", weekStart)
                 .param("targetTasks", targetTasks)
                 .param("targetFocusMinutes", targetFocusMinutes)
@@ -285,14 +285,14 @@ public class GrowthRepository {
                 .update();
     }
 
-    public List<WeeklyCommentView> weeklyComments(String childId, LocalDate weekStart) {
+    public List<WeeklyCommentView> weeklyComments(String studentId, LocalDate weekStart) {
         return jdbc.sql("""
                         SELECT id, actor_name, actor_relation, content, created_at
                         FROM weekly_comments
-                        WHERE child_id = :childId AND week_start = :weekStart
+                        WHERE student_id = :studentId AND week_start = :weekStart
                         ORDER BY created_at DESC
                         """)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("weekStart", weekStart)
                 .query((rs, rowNum) -> {
                     LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
@@ -305,7 +305,7 @@ public class GrowthRepository {
 
     public void insertWeeklyComment(
             String familyId,
-            String childId,
+            String studentId,
             LocalDate weekStart,
             String actorId,
             String actorName,
@@ -313,12 +313,12 @@ public class GrowthRepository {
             String content) {
         jdbc.sql("""
                         INSERT INTO weekly_comments
-                        (id, family_id, child_id, week_start, actor_id, actor_name, actor_relation, content)
-                        VALUES (:id, :familyId, :childId, :weekStart, :actorId, :actorName, :actorRelation, :content)
+                        (id, family_id, student_id, week_start, actor_id, actor_name, actor_relation, content)
+                        VALUES (:id, :familyId, :studentId, :weekStart, :actorId, :actorName, :actorRelation, :content)
                         """)
                 .param("id", UUID.randomUUID().toString())
                 .param("familyId", familyId)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("weekStart", weekStart)
                 .param("actorId", actorId)
                 .param("actorName", actorName)
@@ -327,7 +327,7 @@ public class GrowthRepository {
                 .update();
     }
 
-    public List<RewardView> rewards(String familyId, String childId, int childStars) {
+    public List<RewardView> rewards(String familyId, String studentId, int studentStars) {
         return jdbc.sql("""
                         SELECT reward.id, reward.name, reward.icon, reward.required_stars,
                                reward.category, reward.source_type, creator.display_name AS created_by_name,
@@ -335,25 +335,25 @@ public class GrowthRepository {
                                EXISTS(
                                    SELECT 1 FROM reward_redemptions owned_redemption
                                    WHERE owned_redemption.reward_id = reward.id
-                                     AND owned_redemption.child_id = :childId
+                                     AND owned_redemption.student_id = :studentId
                                      AND owned_redemption.status = 'APPROVED'
                                ) AS owned,
-                               child.equipped_skin_reward_id = reward.id AS equipped
+                               student.equipped_skin_reward_id = reward.id AS equipped
                         FROM reward_definitions reward
                         JOIN members creator ON creator.id = reward.created_by
-                        JOIN children child ON child.id = :childId
+                        JOIN students student ON student.id = :studentId
                         LEFT JOIN reward_redemptions redemption
                           ON redemption.id = (
                               SELECT latest.id
                               FROM reward_redemptions latest
-                              WHERE latest.reward_id = reward.id AND latest.child_id = :childId
+                              WHERE latest.reward_id = reward.id AND latest.student_id = :studentId
                               ORDER BY latest.requested_at DESC
                               LIMIT 1
                           )
                         WHERE reward.family_id = :familyId AND reward.active = TRUE
                         ORDER BY reward.required_stars, reward.created_at
                         """)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("familyId", familyId)
                 .query((rs, rowNum) -> {
                     String redemptionStatus = rs.getString("redemption_status");
@@ -364,14 +364,14 @@ public class GrowthRepository {
                             rs.getString("id"), rs.getString("name"), rs.getString("icon"),
                             rs.getInt("required_stars"), rs.getString("category"),
                             rs.getString("source_type"), rs.getString("created_by_name"),
-                            childStars >= rs.getInt("required_stars") && !pending && !skinOwned,
+                            studentStars >= rs.getInt("required_stars") && !pending && !skinOwned,
                             owned, rs.getBoolean("equipped"),
                             rs.getString("redemption_id"), redemptionStatus);
                 })
                 .list();
     }
 
-    public List<RewardRedemptionView> redemptions(String childId) {
+    public List<RewardRedemptionView> redemptions(String studentId) {
         return jdbc.sql("""
                         SELECT redemption.id, reward.id AS reward_id, reward.name, reward.icon,
                                reward.required_stars, redemption.status,
@@ -382,11 +382,11 @@ public class GrowthRepository {
                         JOIN reward_definitions reward ON reward.id = redemption.reward_id
                         JOIN members requester ON requester.id = redemption.requested_by
                         LEFT JOIN members reviewer ON reviewer.id = redemption.reviewed_by
-                        WHERE redemption.child_id = :childId
+                        WHERE redemption.student_id = :studentId
                         ORDER BY redemption.requested_at DESC
                         LIMIT 30
                         """)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .query((rs, rowNum) -> new RewardRedemptionView(
                         rs.getString("id"), rs.getString("reward_id"), rs.getString("name"),
                         rs.getString("icon"), rs.getInt("required_stars"), rs.getString("status"),
@@ -397,49 +397,49 @@ public class GrowthRepository {
                 .list();
     }
 
-    public List<StarTransactionView> starTransactions(String childId) {
+    public List<StarTransactionView> starTransactions(String studentId) {
         return jdbc.sql("""
                         SELECT id, amount, reason, created_at
                         FROM star_transactions
-                        WHERE child_id = :childId
+                        WHERE student_id = :studentId
                         ORDER BY created_at DESC
                         LIMIT 30
                         """)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .query((rs, rowNum) -> new StarTransactionView(
                         rs.getString("id"), rs.getInt("amount"), rs.getString("reason"),
                         rs.getTimestamp("created_at").toLocalDateTime().format(DATE_TIME)))
                 .list();
     }
 
-    public String equippedSkinRewardId(String childId) {
-        return jdbc.sql("SELECT equipped_skin_reward_id FROM children WHERE id = :childId")
-                .param("childId", childId)
+    public String equippedSkinRewardId(String studentId) {
+        return jdbc.sql("SELECT equipped_skin_reward_id FROM students WHERE id = :studentId")
+                .param("studentId", studentId)
                 .query(String.class)
                 .optional()
                 .orElse(null);
     }
 
-    public boolean ownsApprovedSkin(String childId, String rewardId) {
+    public boolean ownsApprovedSkin(String studentId, String rewardId) {
         return jdbc.sql("""
                         SELECT COUNT(*)
                         FROM reward_redemptions redemption
                         JOIN reward_definitions reward ON reward.id = redemption.reward_id
-                        WHERE redemption.child_id = :childId
+                        WHERE redemption.student_id = :studentId
                           AND reward.id = :rewardId
                           AND reward.category = 'SKIN'
                           AND redemption.status = 'APPROVED'
                         """)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("rewardId", rewardId)
                 .query(Integer.class)
                 .single() > 0;
     }
 
-    public void equipSkin(String childId, String rewardId) {
-        jdbc.sql("UPDATE children SET equipped_skin_reward_id = :rewardId WHERE id = :childId")
+    public void equipSkin(String studentId, String rewardId) {
+        jdbc.sql("UPDATE students SET equipped_skin_reward_id = :rewardId WHERE id = :studentId")
                 .param("rewardId", rewardId)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .update();
     }
 
@@ -466,26 +466,26 @@ public class GrowthRepository {
                 .update();
     }
 
-    public void insertRedemption(String id, String rewardId, String childId, String actorId) {
+    public void insertRedemption(String id, String rewardId, String studentId, String actorId) {
         jdbc.sql("""
                         INSERT INTO reward_redemptions
-                        (id, reward_id, child_id, status, requested_by)
-                        VALUES (:id, :rewardId, :childId, 'REQUESTED', :actorId)
+                        (id, reward_id, student_id, status, requested_by)
+                        VALUES (:id, :rewardId, :studentId, 'REQUESTED', :actorId)
                         """)
                 .param("id", id)
                 .param("rewardId", rewardId)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .param("actorId", actorId)
                 .update();
     }
 
-    public boolean hasPendingRedemption(String rewardId, String childId) {
+    public boolean hasPendingRedemption(String rewardId, String studentId) {
         return jdbc.sql("""
                         SELECT COUNT(*) FROM reward_redemptions
-                        WHERE reward_id = :rewardId AND child_id = :childId AND status = 'REQUESTED'
+                        WHERE reward_id = :rewardId AND student_id = :studentId AND status = 'REQUESTED'
                         """)
                 .param("rewardId", rewardId)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .query(Integer.class)
                 .single() > 0;
     }
@@ -493,7 +493,7 @@ public class GrowthRepository {
     public RedemptionRow requireRedemptionForUpdate(String redemptionId) {
         return jdbc.sql("""
                         SELECT redemption.id, redemption.reward_id, reward.name AS reward_name,
-                               reward.required_stars, redemption.child_id, reward.family_id, redemption.status
+                               reward.required_stars, redemption.student_id, reward.family_id, redemption.status
                         FROM reward_redemptions redemption
                         JOIN reward_definitions reward ON reward.id = redemption.reward_id
                         WHERE redemption.id = :id
@@ -502,7 +502,7 @@ public class GrowthRepository {
                 .param("id", redemptionId)
                 .query((rs, rowNum) -> new RedemptionRow(
                         rs.getString("id"), rs.getString("reward_id"), rs.getString("reward_name"),
-                        rs.getInt("required_stars"), rs.getString("child_id"),
+                        rs.getInt("required_stars"), rs.getString("student_id"),
                         rs.getString("family_id"), rs.getString("status")))
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("未找到奖励申请：" + redemptionId));
@@ -520,13 +520,13 @@ public class GrowthRepository {
                 .update();
     }
 
-    public boolean deductStars(String childId, int stars) {
+    public boolean deductStars(String studentId, int stars) {
         return jdbc.sql("""
-                        UPDATE children SET stars = stars - :stars
-                        WHERE id = :childId AND stars >= :stars
+                        UPDATE students SET stars = stars - :stars
+                        WHERE id = :studentId AND stars >= :stars
                         """)
                 .param("stars", stars)
-                .param("childId", childId)
+                .param("studentId", studentId)
                 .update() == 1;
     }
 }

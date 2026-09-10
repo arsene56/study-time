@@ -1,15 +1,17 @@
 import {
-  ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, Clock3, Flame, Gift,
+  ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Flame, Gift,
   History, Pause, Play, RefreshCw, Sparkles, Star, Trophy, WalletCards,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import {
-  demoChildId, gradeLabel, type DemoContext, type PlanItem, type RealtimeEvent,
+  demoStudentId, gradeLabel, type DemoContext, type PlanItem, type RealtimeEvent,
   type RewardStore, type TodayPlan, type WeeklyReport,
 } from '@study-time/shared';
 
 const apiBase = import.meta.env.VITE_API_BASE ?? '';
-const selectedChildId = new URLSearchParams(window.location.search).get('childId') ?? demoChildId;
+const pageParams = new URLSearchParams(window.location.search);
+const hasUnsupportedQuery = Array.from(pageParams.keys()).some((key) => key !== 'studentId');
+const selectedStudentId = pageParams.get('studentId') ?? demoStudentId;
 type Tab = 'plan' | 'growth' | 'rewards';
 type RewardFilter = 'ALL' | 'SKIN' | 'WISH';
 type RewardPanel = 'STORE' | 'HISTORY' | 'LEDGER';
@@ -37,10 +39,10 @@ function taskTone(item: PlanItem) {
   return 'homework';
 }
 
-function actor(childName?: string) {
+function actor(studentName?: string) {
   return {
-    actorId: selectedChildId.replace('demo-child-', 'demo-child-member-'),
-    actorName: childName ?? '小满',
+    actorId: selectedStudentId.replace('demo-student-', 'demo-student-member-'),
+    actorName: studentName ?? '小满',
     actorRelation: '学生',
   };
 }
@@ -58,6 +60,24 @@ function formatElapsed(seconds: number) {
 }
 
 export default function App() {
+  if (hasUnsupportedQuery) {
+    return (
+      <main className="invalid-link-shell">
+        <section className="invalid-link-card" role="alert">
+          <CircleAlert aria-hidden="true" />
+          <p>这个设备链接已经失效</p>
+          <h1>请使用新的学生端链接</h1>
+          <span>请从家长端重新扫码绑定，或使用带有 studentId 的学生链接。</span>
+          <a href="/">返回学生端首页</a>
+        </section>
+      </main>
+    );
+  }
+
+  return <StudentApp />;
+}
+
+function StudentApp() {
   const [context, setContext] = useState<DemoContext | null>(null);
   const [plan, setPlan] = useState<TodayPlan | null>(null);
   const [weekly, setWeekly] = useState<WeeklyReport | null>(null);
@@ -79,9 +99,9 @@ export default function App() {
       const contextData = await readJson<DemoContext>('/api/v1/demo/context');
       setContext(contextData);
       const [planResult, weeklyResult, rewardResult] = await Promise.allSettled([
-        readJson<TodayPlan>(`/api/v1/children/${selectedChildId}/today-plan`),
-        readJson<WeeklyReport>(`/api/v1/children/${selectedChildId}/weekly-report?weekStart=${currentMonday(weekOffset)}`),
-        readJson<RewardStore>(`/api/v1/families/${contextData.familyId}/rewards?childId=${selectedChildId}`),
+        readJson<TodayPlan>(`/api/v1/students/${selectedStudentId}/today-plan`),
+        readJson<WeeklyReport>(`/api/v1/students/${selectedStudentId}/weekly-report?weekStart=${currentMonday(weekOffset)}`),
+        readJson<RewardStore>(`/api/v1/families/${contextData.familyId}/rewards?studentId=${selectedStudentId}`),
       ]);
       setPlan(planResult.status === 'fulfilled' ? planResult.value : null);
       setWeekly(weeklyResult.status === 'fulfilled' ? weeklyResult.value : null);
@@ -107,15 +127,15 @@ export default function App() {
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = apiBase ? new URL(apiBase).host : window.location.host;
-    const socket = new WebSocket(`${protocol}//${host}/ws/updates?childId=${selectedChildId}`);
+    const socket = new WebSocket(`${protocol}//${host}/ws/updates?studentId=${selectedStudentId}`);
     socket.onmessage = (event) => {
       const update = JSON.parse(event.data) as RealtimeEvent;
-      if (update.childId === selectedChildId) void loadDashboard(true);
+      if (update.studentId === selectedStudentId) void loadDashboard(true);
     };
     return () => socket.close();
   }, [loadDashboard]);
 
-  const child = context?.children.find((item) => item.id === selectedChildId);
+  const student = context?.students.find((item) => item.id === selectedStudentId);
   const finished = plan?.items.filter((item) => item.status === 'DONE' || item.status === 'SKIPPED').length ?? 0;
   const total = plan?.items.length ?? 0;
   const progress = total === 0 ? 0 : Math.round((finished / total) * 100);
@@ -143,13 +163,13 @@ export default function App() {
   };
 
   const start = (item: PlanItem) => mutatePlan(
-    `/api/v1/plan-items/${item.id}/start`, actor(child?.name), `“${item.title}”开始计时，加油！`,
+    `/api/v1/plan-items/${item.id}/start`, actor(student?.name), `“${item.title}”开始计时，加油！`,
   );
 
   const complete = async (item: PlanItem) => {
     const updated = await mutatePlan(
       `/api/v1/plan-items/${item.id}/complete`,
-      { ...actor(child?.name), actualSeconds: elapsedSeconds(item, now) },
+      { ...actor(student?.name), actualSeconds: elapsedSeconds(item, now) },
       item.kind === 'BREAK' ? '休息完成，眼睛也充好电啦' : '完成一项！嘀嘀为你点亮了星星',
     );
     if (updated?.items.every((task) => task.status === 'DONE' || task.status === 'SKIPPED')) {
@@ -161,7 +181,7 @@ export default function App() {
 
   const decide = (item: PlanItem, decision: 'SKIP' | 'CONTINUE') => mutatePlan(
     `/api/v1/plan-items/${item.id}/overrun-decision`,
-    { ...actor(child?.name), decision, actualSeconds: elapsedSeconds(item, now), extraMinutes: 10 },
+    { ...actor(student?.name), decision, actualSeconds: elapsedSeconds(item, now), extraMinutes: 10 },
     decision === 'SKIP' ? '已暂时跳过，嘀嘀重新安排了后面的任务' : '继续挑战 10 分钟，后续时间已自动更新',
   );
 
@@ -173,7 +193,7 @@ export default function App() {
     [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
     await mutatePlan(
       `/api/v1/plans/${plan.id}/reorder`,
-      { ...actor(child?.name), orderedItemIds: ordered.map((item) => item.id) },
+      { ...actor(student?.name), orderedItemIds: ordered.map((item) => item.id) },
       '顺序已调整，家长端也能看到这次变化',
     );
   };
@@ -182,9 +202,9 @@ export default function App() {
     if (!comment.trim()) return;
     setBusyId('comment');
     try {
-      const updated = await readJson<WeeklyReport>(`/api/v1/children/${selectedChildId}/weekly-comments`, {
+      const updated = await readJson<WeeklyReport>(`/api/v1/students/${selectedStudentId}/weekly-comments`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...actor(child?.name), content: comment.trim(), weekStart: weekly?.weekStart }),
+        body: JSON.stringify({ ...actor(student?.name), content: comment.trim(), weekStart: weekly?.weekStart }),
       });
       setWeekly(updated);
       setComment('');
@@ -201,7 +221,7 @@ export default function App() {
     try {
       const updated = await readJson<RewardStore>(`/api/v1/rewards/${rewardId}/redeem`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ childId: selectedChildId, ...actor(child?.name) }),
+        body: JSON.stringify({ studentId: selectedStudentId, ...actor(student?.name) }),
       });
       setRewards(updated);
       setMessage(`“${rewardName}”已发给家长审批`);
@@ -215,14 +235,14 @@ export default function App() {
   const claimWeeklyBonus = async () => {
     setBusyId('weekly-bonus');
     try {
-      const updated = await readJson<WeeklyReport>(`/api/v1/children/${selectedChildId}/weekly-bonus/claim`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(actor(child?.name)),
+      const updated = await readJson<WeeklyReport>(`/api/v1/students/${selectedStudentId}/weekly-bonus/claim`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(actor(student?.name)),
       });
       setWeekly(updated);
       setCelebration({ title: '成长目标达成！', detail: '嘀嘀的专属闪光已点亮，奖励星星也到账啦' });
       setMessage(`本周目标达成！${updated.goal?.bonusStars ?? 0} 颗奖励星已到账`);
       window.setTimeout(() => setCelebration(null), 3600);
-      if (context) setRewards(await readJson<RewardStore>(`/api/v1/families/${context.familyId}/rewards?childId=${selectedChildId}`));
+      if (context) setRewards(await readJson<RewardStore>(`/api/v1/families/${context.familyId}/rewards?studentId=${selectedStudentId}`));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '周奖励暂时无法领取');
     } finally {
@@ -235,7 +255,7 @@ export default function App() {
     try {
       const updated = await readJson<RewardStore>(`/api/v1/rewards/${rewardId}/equip`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ childId: selectedChildId, ...actor(child?.name) }),
+        body: JSON.stringify({ studentId: selectedStudentId, ...actor(student?.name) }),
       });
       setRewards(updated);
       setMessage(`嘀嘀已经换上“${rewardName}”`);
@@ -258,7 +278,7 @@ export default function App() {
       <header className="hero-card">
         <div className="hero-copy">
           <p className="eyebrow">作业时光 · 学生端</p>
-          <h1>{child ? `${child.name}，今天也一起加油` : '嘀嘀正在准备今天的计划'}</h1>
+          <h1>{student ? `${student.name}，今天也一起加油` : '嘀嘀正在准备今天的计划'}</h1>
           <p className="sync-line"><span className="live-dot" />{message}</p>
         </div>
         <div className={`didi-wrap ${skinClass}`} aria-label="小时光机器人嘀嘀">
@@ -270,7 +290,7 @@ export default function App() {
 
       <section className="summary-grid" aria-label="今日计划概览">
         <article><Clock3 /><span>预计完成</span><strong>{plan?.plannedEndTime ?? '--:--'}</strong></article>
-        <article><Star /><span>我的星星</span><strong>{rewards?.childStars ?? child?.stars ?? '--'}</strong></article>
+        <article><Star /><span>我的星星</span><strong>{rewards?.studentStars ?? student?.stars ?? '--'}</strong></article>
         <article><Sparkles /><span>当前进度</span><strong>{progress}%</strong></article>
       </section>
 
@@ -283,7 +303,7 @@ export default function App() {
       {tab === 'plan' && (
         <section className="plan-section">
           <div className="section-heading">
-            <div><p>{child ? gradeLabel(child.grade) : '今日任务'}</p><h2>我的放学后计划</h2></div>
+            <div><p>{student ? gradeLabel(student.grade) : '今日任务'}</p><h2>我的放学后计划</h2></div>
             <button className="icon-button" type="button" onClick={() => void loadDashboard()} aria-label="刷新计划"><RefreshCw className={loading ? 'spin' : ''} /></button>
           </div>
           {plan?.warningMessage && <div className="warning-card">⏰ {plan.warningMessage}</div>}
@@ -356,7 +376,7 @@ export default function App() {
 
       {tab === 'rewards' && (
         <section className="content-section">
-          <div className="section-heading"><div><p>努力会闪闪发光</p><h2>星星奖励</h2></div><div className="star-balance"><Star />{rewards?.childStars ?? 0}</div></div>
+          <div className="section-heading"><div><p>努力会闪闪发光</p><h2>星星奖励</h2></div><div className="star-balance"><Star />{rewards?.studentStars ?? 0}</div></div>
           <p className="section-intro">完成任务积累星星，可以解锁嘀嘀皮肤，也可以实现家庭小心愿。</p>
           <div className="reward-panels"><button className={rewardPanel === 'STORE' ? 'active' : ''} onClick={() => setRewardPanel('STORE')}><Gift />奖励商店</button><button className={rewardPanel === 'HISTORY' ? 'active' : ''} onClick={() => setRewardPanel('HISTORY')}><History />申请记录</button><button className={rewardPanel === 'LEDGER' ? 'active' : ''} onClick={() => setRewardPanel('LEDGER')}><WalletCards />星星账本</button></div>
           {rewardPanel === 'STORE' && <><div className="reward-filters">{([['ALL','全部奖励'],['SKIN','嘀嘀皮肤'],['WISH','家庭心愿']] as [RewardFilter,string][]).map(([id,label]) => <button className={rewardFilter === id ? 'active' : ''} key={id} onClick={() => setRewardFilter(id)}>{label}</button>)}</div>

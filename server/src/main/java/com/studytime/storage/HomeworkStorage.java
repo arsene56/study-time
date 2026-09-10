@@ -7,6 +7,7 @@ import io.minio.PutObjectArgs;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,6 +24,7 @@ public class HomeworkStorage {
     }
 
     @EventListener(ApplicationReadyEvent.class)
+    @Order(0)
     public void ensureBucket() throws Exception {
         boolean exists = client.bucketExists(BucketExistsArgs.builder().bucket(bucket).build());
         if (!exists) {
@@ -30,10 +32,10 @@ public class HomeworkStorage {
         }
     }
 
-    public String store(String childId, MultipartFile file) {
+    public String store(String studentId, MultipartFile file) {
         String originalName = file.getOriginalFilename() == null ? "homework.jpg" : file.getOriginalFilename();
         String safeName = originalName.replaceAll("[^a-zA-Z0-9._-]", "_");
-        String objectKey = childId + "/" + UUID.randomUUID() + "-" + safeName;
+        String objectKey = studentId + "/" + UUID.randomUUID() + "-" + safeName;
         try {
             client.putObject(PutObjectArgs.builder()
                     .bucket(bucket)

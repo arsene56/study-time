@@ -17,9 +17,9 @@ if (-not $capability.configuredProvider -or -not $capability.message) { throw "O
 
 Write-Host "2/15 读取演示家庭并模拟识别"
 $context = Invoke-RestMethod -Uri "$ApiUrl/demo/context"
-$child = $context.children | Select-Object -Last 1
-if (-not $child) { throw "演示家庭中没有学生" }
-$batch = Invoke-RestMethod -Method Post -Uri "$ApiUrl/homework-batches/mock-recognize?childId=$($child.id)"
+$student = $context.students | Select-Object -Last 1
+if (-not $student) { throw "演示家庭中没有学生" }
+$batch = Invoke-RestMethod -Method Post -Uri "$ApiUrl/homework-batches/mock-recognize?studentId=$($student.id)"
 if ($batch.status -ne "PENDING_CONFIRMATION" -or $batch.tasks.Count -eq 0) { throw "模拟识别没有返回待确认任务" }
 if (-not $batch.ocrProvider -or -not $batch.ocrRawText) { throw "识别批次缺少 OCR 元数据" }
 if (-not ($batch.tasks | Where-Object { $_.estimateSource -in @("GRADE_DEFAULT", "PERSONAL_HISTORY", "SUBJECT_HISTORY") })) { throw "识别结果缺少耗时估算来源" }
@@ -40,8 +40,8 @@ $plan = Invoke-RestMethod -Method Post -Uri "$ApiUrl/homework-batches/$($batch.i
 $firstTask = $plan.items | Where-Object { $_.kind -eq "HOMEWORK" } | Select-Object -First 1
 if (-not $firstTask -or $plan.bedtimeBufferMinutes -lt 30) { throw "计划生成或睡前预留不正确" }
 $actor = @{
-    actorId = $child.id -replace "demo-child-", "demo-child-member-"
-    actorName = $child.name
+    actorId = $student.id -replace "demo-student-", "demo-student-member-"
+    actorName = $student.name
     actorRelation = "学生"
 }
 
@@ -58,8 +58,8 @@ $completed = Invoke-RestMethod -Method Post -Uri "$ApiUrl/plan-items/$($firstTas
 if (($completed.items | Where-Object id -eq $firstTask.id).status -ne "DONE") { throw "任务完成状态没有写回" }
 
 Write-Host "7/15 检查学生个性化画像"
-$profile = Invoke-RestMethod -Uri "$ApiUrl/children/$($child.id)/personalization-profile"
-if ($profile.childId -ne $child.id -or -not $profile.confidence -or $profile.totalSamples -lt 1) { throw "个性化画像没有吸收完成样本" }
+$profile = Invoke-RestMethod -Uri "$ApiUrl/students/$($student.id)/personalization-profile"
+if ($profile.studentId -ne $student.id -or -not $profile.confidence -or $profile.totalSamples -lt 1) { throw "个性化画像没有吸收完成样本" }
 
 Write-Host "8/15 以家长身份调整任务顺序"
 $ids = [System.Collections.Generic.List[string]]::new()
@@ -78,24 +78,24 @@ if (($skipped.items | Where-Object id -eq $skipTask.id).status -ne "SKIPPED") { 
 
 Write-Host "10/15 检查周报趋势并添加鼓励"
 $commentRequest = $actor + @{ content = "自动验收：我学会自己调整计划啦！"; weekStart = $null }
-$weekly = Invoke-RestMethod -Method Post -Uri "$ApiUrl/children/$($child.id)/weekly-comments" -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Utf8JsonBytes $commentRequest)
+$weekly = Invoke-RestMethod -Method Post -Uri "$ApiUrl/students/$($student.id)/weekly-comments" -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Utf8JsonBytes $commentRequest)
 if ($weekly.dailyProgress.Count -ne 7 -or -not $weekly.comparison -or -not $weekly.badges -or -not ($weekly.comments | Where-Object content -eq $commentRequest.content)) { throw "周报趋势或鼓励墙写回失败" }
 
 Write-Host "11/15 设置周目标并完成一次性结算"
 if ($weekly.goal.status -ne "CLAIMED") {
     $goalRequest = @{ targetTasks = 1; targetFocusMinutes = 1; bonusStars = 2; actorId = "demo-parent-mom"; actorName = "林妈妈"; actorRelation = "妈妈" }
-    $goal = Invoke-RestMethod -Method Post -Uri "$ApiUrl/children/$($child.id)/weekly-goal" -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Utf8JsonBytes $goalRequest)
+    $goal = Invoke-RestMethod -Method Post -Uri "$ApiUrl/students/$($student.id)/weekly-goal" -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Utf8JsonBytes $goalRequest)
     if ($goal.goal.status -ne "READY") { throw "已达成的周目标没有进入待领取状态" }
-    $weekly = Invoke-RestMethod -Method Post -Uri "$ApiUrl/children/$($child.id)/weekly-bonus/claim" -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Utf8JsonBytes $actor)
+    $weekly = Invoke-RestMethod -Method Post -Uri "$ApiUrl/students/$($student.id)/weekly-bonus/claim" -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Utf8JsonBytes $actor)
 }
 if ($weekly.goal.status -ne "CLAIMED") { throw "周结算奖励没有完成" }
 
 Write-Host "12/15 创建、申请并批准自定义皮肤"
 $rewardName = "自动验收皮肤-$([DateTimeOffset]::Now.ToUnixTimeMilliseconds())"
 $rewardRequest = @{ name = $rewardName; icon = "🤖"; requiredStars = 1; category = "SKIN"; actorId = "demo-parent-mom"; actorName = "林妈妈"; actorRelation = "妈妈" }
-$store = Invoke-RestMethod -Method Post -Uri "$ApiUrl/families/$($context.familyId)/rewards?childId=$($child.id)" -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Utf8JsonBytes $rewardRequest)
+$store = Invoke-RestMethod -Method Post -Uri "$ApiUrl/families/$($context.familyId)/rewards?studentId=$($student.id)" -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Utf8JsonBytes $rewardRequest)
 $reward = $store.rewards | Where-Object name -eq $rewardName | Select-Object -First 1
-$redeemRequest = $actor + @{ childId = $child.id }
+$redeemRequest = $actor + @{ studentId = $student.id }
 $requested = Invoke-RestMethod -Method Post -Uri "$ApiUrl/rewards/$($reward.id)/redeem" -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Utf8JsonBytes $redeemRequest)
 $redemption = $requested.rewards | Where-Object id -eq $reward.id
 $reviewRequest = @{ approved = $true; actorId = "demo-parent-mom"; actorName = "林妈妈"; actorRelation = "妈妈" }
@@ -109,7 +109,7 @@ if (-not ($equipped.redemptions | Where-Object id -eq $redemption.redemptionId))
 if ($equipped.starTransactions.Count -eq 0) { throw "星星账本没有写入" }
 
 Write-Host "14/15 检查家庭协作审计记录"
-$activities = Invoke-RestMethod -Uri "$ApiUrl/children/$($child.id)/activities"
+$activities = Invoke-RestMethod -Uri "$ApiUrl/students/$($student.id)/activities"
 foreach ($action in @("TASK_COMPLETED", "PLAN_REORDERED", "PLAN_OVERRUN_DECISION", "REWARD_APPROVED", "DIDI_SKIN_EQUIPPED")) {
     if (-not ($activities | Where-Object actionType -eq $action)) { throw "缺少操作记录：$action" }
 }

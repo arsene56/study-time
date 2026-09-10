@@ -20,15 +20,15 @@ public class PersonalizedEstimationService {
         this.repository = repository;
     }
 
-    public Estimate estimate(String childId, String subject, String taskType, int baselineMinutes) {
-        List<HistorySample> exact = repository.findRecentExactHistory(childId, subject, taskType, 20);
+    public Estimate estimate(String studentId, String subject, String taskType, int baselineMinutes) {
+        List<HistorySample> exact = repository.findRecentExactHistory(studentId, subject, taskType, 20);
         if (exact.size() >= 2) {
             double blend = Math.min(0.8, 0.25 + exact.size() * 0.1);
             return calculate(baselineMinutes, exact, "PERSONAL_HISTORY", blend,
                     "参考最近 " + exact.size() + " 次同类作业，已做异常值保护");
         }
 
-        List<HistorySample> subjectHistory = repository.findRecentSubjectHistory(childId, subject, 20);
+        List<HistorySample> subjectHistory = repository.findRecentSubjectHistory(studentId, subject, 20);
         if (subjectHistory.size() >= 4) {
             double blend = Math.min(0.6, 0.2 + subjectHistory.size() * 0.05);
             return calculate(baselineMinutes, subjectHistory, "SUBJECT_HISTORY", blend,
@@ -55,9 +55,9 @@ public class PersonalizedEstimationService {
                 minutes, baselineMinutes, source, samples.size(), confidence, reason, adjustmentPercent);
     }
 
-    public PersonalizationProfileView profile(String childId) {
-        repository.requireChild(childId);
-        List<HistorySample> samples = repository.findRecentChildHistory(childId, 200);
+    public PersonalizationProfileView profile(String studentId) {
+        repository.requireStudent(studentId);
+        List<HistorySample> samples = repository.findRecentStudentHistory(studentId, 200);
         int total = samples.size();
         int overallPace = total == 0 ? 100 : (int) Math.round(weightedPace(samples) * 100);
         String level = total >= 12 ? "STABLE" : total >= 4 ? "LEARNING" : "STARTING";
@@ -76,7 +76,7 @@ public class PersonalizedEstimationService {
                 .map(entry -> subjectView(entry.getKey(), entry.getValue()))
                 .toList();
         return new PersonalizationProfileView(
-                childId, total, level, confidence, overallPace, summary, subjects);
+                studentId, total, level, confidence, overallPace, summary, subjects);
     }
 
     private SubjectPersonalizationView subjectView(String subject, List<HistorySample> samples) {
