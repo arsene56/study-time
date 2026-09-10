@@ -43,11 +43,11 @@ jobs:
 
       - name: Backend tests
         working-directory: server
-        run: ./mvnw test
+        run: bash ./mvnw test
 
       - name: Start backend
         working-directory: server
-        run: nohup ./mvnw spring-boot:run > ../server-ci.log 2>&1 &
+        run: nohup bash ./mvnw spring-boot:run > ../server-ci.log 2>&1 &
 
       - name: Wait for backend
         run: |
