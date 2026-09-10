@@ -22,6 +22,7 @@ import java.util.Optional;
 
 @Repository
 public class StudyTimeRepository {
+    private static final int PERSONALIZATION_HISTORY_DAYS = 60;
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -583,13 +584,14 @@ public class StudyTimeRepository {
                           AND task_type = :taskType
                           AND status = 'DONE'
                           AND actual_seconds > 0
-                          AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 180 DAY)
+                          AND created_at >= :historyStart
                         ORDER BY completed_at DESC
                         LIMIT :limit
                         """)
                 .param("childId", childId)
                 .param("subject", subject)
                 .param("taskType", taskType)
+                .param("historyStart", personalizationHistoryStart())
                 .param("limit", limit)
                 .query(this::mapHistorySample)
                 .list();
@@ -604,12 +606,13 @@ public class StudyTimeRepository {
                           AND subject = :subject
                           AND status = 'DONE'
                           AND actual_seconds > 0
-                          AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 180 DAY)
+                          AND created_at >= :historyStart
                         ORDER BY completed_at DESC
                         LIMIT :limit
                         """)
                 .param("childId", childId)
                 .param("subject", subject)
+                .param("historyStart", personalizationHistoryStart())
                 .param("limit", limit)
                 .query(this::mapHistorySample)
                 .list();
@@ -623,11 +626,12 @@ public class StudyTimeRepository {
                         WHERE child_id = :childId
                           AND status = 'DONE'
                           AND actual_seconds > 0
-                          AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 180 DAY)
+                          AND created_at >= :historyStart
                         ORDER BY completed_at DESC
                         LIMIT :limit
                         """)
                 .param("childId", childId)
+                .param("historyStart", personalizationHistoryStart())
                 .param("limit", limit)
                 .query(this::mapHistorySample)
                 .list();
@@ -750,5 +754,9 @@ public class StudyTimeRepository {
     private Double nullableDouble(ResultSet rs, String column) throws SQLException {
         double value = rs.getDouble(column);
         return rs.wasNull() ? null : value;
+    }
+
+    private LocalDateTime personalizationHistoryStart() {
+        return LocalDateTime.now().minusDays(PERSONALIZATION_HISTORY_DAYS);
     }
 }

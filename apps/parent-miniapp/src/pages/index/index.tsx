@@ -322,7 +322,7 @@ export default function ParentHome() {
       </>}
 
       {tab === 'profile' && <View className="card profileCard">
-        <View className="cardHead"><View><Text className="step">最近 180 天 · 滚动学习</Text><Text className="cardTitle">{child?.name}的时间曲线</Text></View><Text className={`profileLevel level-${profile?.level.toLowerCase()}`}>{profile?.level === 'STABLE' ? '稳定画像' : profile?.level === 'LEARNING' ? '学习中' : '刚开始'}</Text></View>
+        <View className="cardHead"><View><Text className="step">最近 60 天 · 滚动学习</Text><Text className="cardTitle">{child?.name}的时间曲线</Text></View><Text className={`profileLevel level-${profile?.level.toLowerCase()}`}>{profile?.level === 'STABLE' ? '稳定画像' : profile?.level === 'LEARNING' ? '学习中' : '刚开始'}</Text></View>
         {profile && <><View className="profileHero"><View><Text>{profile.totalSamples}</Text><Text>有效完成样本</Text></View><View><Text>{profile.overallPacePercent}%</Text><Text>相对年级基准</Text></View><View><Text>{profile.confidence === 'HIGH' ? '高' : profile.confidence === 'MEDIUM' ? '中' : '低'}</Text><Text>估时可信度</Text></View></View>
           <View className="growthMessage"><Text>🤖</Text><View><Text>{profile.summary}</Text><Text>新近记录权重更高，单次异常用时不会直接改变后续计划。</Text></View></View>
           <Text className="sectionLabel">分学科节奏</Text>
