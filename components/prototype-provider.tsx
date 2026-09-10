@@ -57,6 +57,47 @@ function addMinutes(time: string, minutes: number) {
   return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
+function minutesSinceMidnight(time: string) {
+  const [hour, minute] = time.split(':').map(Number);
+  return hour * 60 + minute;
+}
+
+function effectiveMinutes(task: StudentProfile['tasks'][number]) {
+  if (task.status === 'skipped') return 0;
+  if (task.status === 'done' && task.actualSeconds > 0) {
+    return Math.max(1, Math.ceil(task.actualSeconds / 60));
+  }
+  return task.estimatedMinutes;
+}
+
+function scheduleGaps(tasks: StudentProfile['tasks'], plannedEnd: string) {
+  return tasks.map((task, index) => {
+    const nextStart = tasks[index + 1]?.start ?? plannedEnd;
+    return Math.max(0, minutesSinceMidnight(nextStart) - minutesSinceMidnight(task.end));
+  });
+}
+
+function earliestStart(tasks: StudentProfile['tasks']) {
+  return tasks.reduce((earliest, task) => (
+    minutesSinceMidnight(task.start) < minutesSinceMidnight(earliest) ? task.start : earliest
+  ), tasks[0]?.start ?? '17:30');
+}
+
+function rescheduleTasks(
+  tasks: StudentProfile['tasks'],
+  planStart: string,
+  gapsAfter: number[],
+) {
+  let cursor = planStart;
+  const scheduled = tasks.map((task, index) => {
+    const start = cursor;
+    const end = addMinutes(start, effectiveMinutes(task));
+    cursor = addMinutes(end, gapsAfter[index] ?? 0);
+    return { ...task, start, end };
+  });
+  return { tasks: scheduled, plannedEnd: cursor };
+}
+
 export function PrototypeProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<DemoState>(initialState);
   const [hydrated, setHydrated] = useState(false);
@@ -111,12 +152,14 @@ export function PrototypeProvider({ children }: { children: React.ReactNode }) {
         const index = tasks.findIndex((task) => task.id === taskId);
         const target = index + direction;
         if (index < 0 || target < 0 || target >= tasks.length) return student;
+        const planStart = earliestStart(student.tasks);
+        const gapsAfter = scheduleGaps(student.tasks, student.plannedEnd);
         [tasks[index], tasks[target]] = [tasks[target], tasks[index]];
-        return { ...student, tasks };
+        return { ...student, ...rescheduleTasks(tasks, planStart, gapsAfter) };
       });
       addActivity(actor === 'parent'
-        ? { studentId: state.activeStudentId, actor: '妈妈', relation: '妈妈', action: '调整了两项任务的顺序', tone: 'mint' }
-        : { studentId: state.activeStudentId, actor: activeStudent.name, relation: '学生', action: '自主调整了两项任务的顺序', tone: 'orange' });
+        ? { studentId: state.activeStudentId, actor: '妈妈', relation: '妈妈', action: '调整了两项任务的顺序，后续时间已同步更新', tone: 'mint' }
+        : { studentId: state.activeStudentId, actor: activeStudent.name, relation: '学生', action: '自主调整了两项任务的顺序，后续时间已同步更新', tone: 'orange' });
     },
     startTask: (taskId) => {
       updateActiveStudent((student) => ({

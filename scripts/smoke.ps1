@@ -68,6 +68,14 @@ if ($ids.Count -gt 2) { $temporary = $ids[1]; $ids[1] = $ids[2]; $ids[2] = $temp
 $reorderRequest = @{ orderedItemIds = $ids }
 $reordered = Invoke-RestMethod -Method Post -Uri "$ApiUrl/plans/$($plan.id)/reorder" -ContentType "application/json; charset=utf-8" -Body (ConvertTo-Utf8JsonBytes $reorderRequest)
 if ($reordered.items.Count -ne $ids.Count -or $reordered.items[1].id -ne $ids[1]) { throw "手动调序没有生效" }
+$scheduleCursor = $reordered.startTime
+foreach ($item in $reordered.items) {
+    if ($item.plannedStart -ne $scheduleCursor) {
+        throw "调序后时间没有连续重算：$($item.title) 预期从 $scheduleCursor 开始，实际为 $($item.plannedStart)"
+    }
+    $scheduleCursor = $item.plannedEnd
+}
+if ($scheduleCursor -ne $reordered.plannedEndTime) { throw "调序后的计划完成时间与最后一项结束时间不一致" }
 
 Write-Host "9/16 暂时跳过一项困难任务"
 $skipTask = $reordered.items | Where-Object status -eq "PENDING" | Select-Object -First 1
