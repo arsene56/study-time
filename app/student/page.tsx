@@ -116,7 +116,7 @@ export default function StudentPage() {
           <button onClick={() => { setOverrunOpen(true); }}><TimerReset />体验超时重排</button>
           <button onClick={() => setCelebration(true)}><Sparkles />查看全部完成特效</button>
         </div>
-        <a href="/parent" className="rail-switch">切换到家长微信端 <span>→</span></a>
+        <a href="/parent" className="rail-switch">切换到家长端 <span>→</span></a>
       </aside>
 
       <section className="device-frame tablet-frame" aria-label="作业时光学生端原型">
