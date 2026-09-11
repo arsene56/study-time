@@ -24,7 +24,7 @@ export default function OnboardingPage() {
   return (
     <main className="onboarding-page">
       <div className="onboarding-topbar">
-        <a href="/" className="onboarding-brand"><Clock3 /><span><strong>作业时光</strong><small>自己规划，快乐成长</small></span></a>
+        <a href="/" className="onboarding-brand"><Clock3 /><span><strong>作业时光</strong><small>自主规划，快乐成长</small></span></a>
         <span className="secure-note"><ShieldCheck />演示数据仅保存在本机</span>
       </div>
 

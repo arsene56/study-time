@@ -16,7 +16,7 @@ export default function Home() {
           </div>
           <div>
             <p className="brand-name">作业时光</p>
-            <p className="brand-slogan">自己规划，快乐成长</p>
+            <p className="brand-slogan">自主规划，快乐成长</p>
           </div>
           <span className="prototype-badge">高保真体验版</span>
         </header>

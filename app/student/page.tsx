@@ -123,7 +123,7 @@ export default function StudentPage() {
         <div className="tablet-status"><span>17:28 · 9月8日 星期二</span><span>学习模式　Wi‑Fi　78%</span></div>
         <div className="student-app">
           <header className="tablet-header">
-            <div className="tablet-brand"><span><Clock3 /></span><div><strong>作业时光</strong><small>自己规划，快乐成长</small></div></div>
+            <div className="tablet-brand"><span><Clock3 /></span><div><strong>作业时光</strong><small>自主规划，快乐成长</small></div></div>
             <div className="student-header-actions">
               <button className="star-balance" onClick={() => setTab('rewards')}><Star /><strong>{activeStudent.stars}</strong><span>颗星星</span></button>
               <button className="student-avatar-button" onClick={() => setActiveStudent(activeStudentId === 'xiaoman' ? 'keke' : 'xiaoman')}><span>{activeStudent.avatar}</span><div><strong>{activeStudent.name}</strong><small>{activeStudent.grade}</small></div><ChevronDown /></button>

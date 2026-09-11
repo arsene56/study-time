@@ -7,7 +7,7 @@
 - 家长微信小程序：Taro + React + TypeScript。
 - 学生端：React + Vite PWA，保留平板竖屏大触点体验。
 - 共享层：任务模型、排期规则、主题令牌、模拟数据和接口类型。
-- 后端：Java 21 + Spring Boot；承接家庭、成员关系、多孩隔离、OCR/AI、排期、实时同步、通知、奖励和周报。
+- 后端：Java 21 + Spring Boot；承接家庭、成员关系、多学生隔离、OCR/AI、排期、实时同步、通知、奖励和周报。
 
 原有线上原型的 OCR、个性化估时、扫码绑定和通知仍为可点击的模拟体验，不会上传真实数据。`apps/parent-miniapp`、`apps/student-pwa` 与 Spring Boot 正式业务链路已加入可替换的 OCR Provider、腾讯云高精度通用文字识别适配、识别结果人工修订，以及按学生隔离的近期加权个性化估时。
 
