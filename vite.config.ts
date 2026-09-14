@@ -47,9 +47,14 @@ export default defineConfig(async () => {
   return {
     css: { postcss: { plugins: [tailwindcss()] } },
     optimizeDeps: { exclude: ['lucide-react'] },
-    server: isCodexSeatbeltSandbox
-      ? { watch: { useFsEvents: false, usePolling: true } }
-      : undefined,
+    server: {
+      // Listen on every local interface so phones and tablets on the same LAN
+      // can open the prototype through this machine's private IP address.
+      host: '0.0.0.0',
+      ...(isCodexSeatbeltSandbox
+        ? { watch: { useFsEvents: false, usePolling: true } }
+        : {}),
+    },
     plugins: [
       vinext(),
       sites(),

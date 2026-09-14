@@ -66,7 +66,7 @@ export default function ParentPage() {
         <a href="/" className="rail-brand"><Clock3 /><span>作业时光</span></a>
         <div className="rail-copy">
           <span>家长微信端</span>
-          <h1>安心看见成长，<br />把安排交给学生。</h1>
+          <h1>安心看见成长，<br />安排交给学生。</h1>
           <p>当前展示 390 × 844 手机竖屏体验。所有操作会保存到这台设备。</p>
         </div>
         <div className="rail-family-card">
