@@ -24,7 +24,7 @@ export default function Home() {
         <div className="launch-grid">
           <section className="launch-copy">
             <div className="eyebrow"><Sparkles size={15} /> 今天也和嘀嘀一起出发</div>
-            <h1>把作业安排好，<br /><span>把快乐还给晚上。</span></h1>
+            <h1>作业安排好，<br /><span>快乐小时光。</span></h1>
             <p className="launch-intro">
               从一张作业照片开始，自动识别、估时和安排休息。家长安心看进度，学生主动完成自己的计划。
             </p>
